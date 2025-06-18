@@ -72,6 +72,27 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-enostics-gray-600;
   }
+
+  /* Thin scrollbar variant for sidebar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    @apply w-1;
+  }
+
+  .scrollbar-track-enostics-gray-900::-webkit-scrollbar-track {
+    @apply bg-enostics-gray-900;
+  }
+
+  .scrollbar-thumb-enostics-gray-700::-webkit-scrollbar-thumb {
+    @apply bg-enostics-gray-700 rounded-full;
+  }
+
+  .hover\:scrollbar-thumb-enostics-gray-600:hover::-webkit-scrollbar-thumb {
+    @apply bg-enostics-gray-600;
+  }
 }
 
 @layer components {

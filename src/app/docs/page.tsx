@@ -129,194 +129,237 @@ export default function DocsPage() {
   }
 
   return (
-    <main className="relative w-screen min-h-screen">
-      {/* Background */}
-      <BackgroundMedia 
-        type={homepageConfig.background.type}
-        path={homepageConfig.background.path}
-        mobilePath={homepageConfig.background.mobilePath}
-        opacity={0.3}
-        className="absolute inset-0 w-full h-full object-cover"
-        videoOptions={homepageConfig.background.video}
-      />
-      
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-enostics-gray-950/80" />
+    <div className="h-screen bg-enostics-gray-950 overflow-hidden">
+      {/* Background - only on mobile */}
+      <div className="relative lg:hidden">
+        <BackgroundMedia 
+          type={homepageConfig.background.type}
+          path={homepageConfig.background.path}
+          mobilePath={homepageConfig.background.mobilePath}
+          opacity={0.3}
+          className="absolute inset-0 w-full h-full object-cover"
+          videoOptions={homepageConfig.background.video}
+        />
+        <div className="absolute inset-0 bg-enostics-gray-950/80" />
+      </div>
 
-      {/* Floating UI Elements */}
-      <div className="relative z-10 min-h-screen">
-        {/* Floating Navigation */}
-        <FloatingDocsNavbar onMenuToggle={toggleSidebar} />
-        
-        {/* Floating Sidebar */}
-        <FloatingDocsSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+      {/* Layout Container - Fixed height with flex */}
+      <div className="flex h-screen">
+        {/* Sidebar - Always visible on desktop, fixed position */}
+        <div className="hidden lg:block lg:w-80 lg:flex-shrink-0">
+          <FloatingDocsSidebar 
+            isOpen={true} 
+            onClose={undefined} 
+          />
+        </div>
 
-        {/* Main Content */}
-        <div className="pt-20 px-6 py-12">
-          {/* Compact Hero Section */}
-          <div className="max-w-6xl mx-auto mb-12">
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="p-3 bg-enostics-gray-900 border border-enostics-gray-700 rounded-xl">
-                  <BookOpen className="h-8 w-8 text-brand" />
+        {/* Mobile Sidebar */}
+        <div className="lg:hidden">
+          <FloatingDocsSidebar 
+            isOpen={isSidebarOpen} 
+            onClose={closeSidebar} 
+          />
+        </div>
+
+        {/* Main Content Area - Flex column with fixed header and scrollable content */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Mobile Navigation - Fixed */}
+          <div className="lg:hidden flex-shrink-0">
+            <FloatingDocsNavbar onMenuToggle={toggleSidebar} />
+          </div>
+
+          {/* Desktop Header Bar - Fixed */}
+          <div className="hidden lg:block flex-shrink-0 bg-enostics-gray-950/95 backdrop-blur-xl border-b border-enostics-gray-800/50">
+            <div className="px-8 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Link href="/" className="text-white text-xl font-semibold hover:text-brand transition-colors">
+                    enostics
+                  </Link>
+                  <span className="text-white/40">/</span>
+                  <span className="text-white/80 font-medium">docs</span>
                 </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-white">
-                  Documentation
-                </h1>
+                <div className="flex items-center gap-6 text-white/80">
+                  <Link href="/playground" className="hover:text-brand transition-colors text-sm font-medium">
+                    Playground
+                  </Link>
+                  <Link href="/dashboard" className="hover:text-brand transition-colors text-sm font-medium">
+                    Dashboard
+                  </Link>
+                  <Link href="/login" className="hover:text-brand transition-colors text-sm font-medium">
+                    Login
+                  </Link>
+                </div>
               </div>
-              <p className="text-lg text-enostics-gray-300 mb-8 leading-relaxed max-w-3xl mx-auto">
-                Everything you need to build with Enostics — guides, examples, and API references.
-              </p>
+            </div>
+          </div>
 
-              {/* Compact Search Bar */}
-              <div className="max-w-md mx-auto mb-6">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search documentation..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-3 pl-12 bg-enostics-gray-900 border border-enostics-gray-700 rounded-lg text-white placeholder-enostics-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-all duration-200"
-                  />
-                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                    <Search className="h-4 w-4 text-enostics-gray-400" />
+          {/* Main Content - Scrollable */}
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-6 lg:px-8 py-12">
+              {/* Hero Section */}
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-16">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand/10 border border-brand/20 rounded-full text-sm text-brand font-medium mb-6">
+                    <Sparkles className="h-4 w-4" />
+                    Universal Personal API Documentation
                   </div>
-                  {searchTerm && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="text-xs text-enostics-gray-500 bg-enostics-gray-800 px-2 py-1 rounded">
-                        {filteredSections.length} results
+                  <h1 className="text-4xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+                    Build with{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand via-brand-light to-brand">
+                      Enostics
+                    </span>
+                  </h1>
+                  <p className="text-xl text-enostics-gray-300 max-w-3xl mx-auto leading-relaxed">
+                    Everything you need to integrate with the universal personal API layer. 
+                    From quick start guides to advanced implementation patterns.
+                  </p>
+                </div>
+
+                {/* Search and Filter */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-12">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-enostics-gray-500" />
+                    <input
+                      type="text"
+                      placeholder="Search documentation..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 bg-enostics-gray-900/50 border border-enostics-gray-700/50 rounded-xl text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all duration-200"
+                    />
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {categories.map((category) => (
+                      <button
+                        key={category.id}
+                        onClick={() => setSelectedCategory(category.id)}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                          selectedCategory === category.id
+                            ? 'bg-brand/20 text-brand border border-brand/30'
+                            : 'bg-enostics-gray-900/50 text-enostics-gray-300 border border-enostics-gray-700/50 hover:bg-enostics-gray-800/50 hover:text-white'
+                        }`}
+                      >
+                        {category.icon}
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Documentation Sections */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  {filteredSections.map((section) => (
+                    <Card key={section.id} className="group bg-enostics-gray-900/50 border-enostics-gray-700/50 hover:bg-enostics-gray-800/50 hover:border-enostics-gray-600/50 transition-all duration-300">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-brand/10 border border-brand/20 rounded-lg group-hover:bg-brand/20 transition-colors">
+                              {section.icon}
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg text-white group-hover:text-brand transition-colors">
+                                {section.title}
+                              </CardTitle>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${difficultyColors[section.difficulty]}`}
+                                >
+                                  {section.difficulty}
+                                </Badge>
+                                <div className="flex items-center gap-1 text-xs text-enostics-gray-500">
+                                  <Clock className="h-3 w-3" />
+                                  {section.estimatedTime}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-enostics-gray-500 group-hover:text-brand group-hover:translate-x-1 transition-all duration-200" />
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-enostics-gray-400 text-sm leading-relaxed mb-4">
+                          {section.description}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {section.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-1 bg-enostics-gray-800/50 text-enostics-gray-400 text-xs rounded-md"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {section.tags.length > 3 && (
+                            <span className="px-2 py-1 bg-enostics-gray-800/50 text-enostics-gray-400 text-xs rounded-md">
+                              +{section.tags.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                        <Link 
+                          href={`/docs/section/${section.id}`}
+                          className="inline-flex items-center gap-2 text-sm text-brand hover:text-brand-light transition-colors font-medium"
+                        >
+                          Read Documentation
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Empty State */}
+                {filteredSections.length === 0 && (
+                  <div className="text-center py-16">
+                    <div className="text-6xl mb-4">📚</div>
+                    <h3 className="text-xl font-medium text-white mb-2">No documentation found</h3>
+                    <p className="text-enostics-gray-400 mb-6">
+                      Try adjusting your search terms or category filter.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSearchTerm('')
+                        setSelectedCategory('all')
+                      }}
+                      className="px-6 py-3 bg-brand/20 text-brand border border-brand/30 rounded-xl hover:bg-brand/30 transition-colors font-medium"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                )}
+
+                {/* Quick Links */}
+                <div className="mt-20 pt-12 border-t border-enostics-gray-800/50">
+                  <h2 className="text-2xl font-bold text-white mb-8 text-center">Popular Resources</h2>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Link href="/docs/section/quick-start" className="group p-6 bg-enostics-gray-900/30 border border-enostics-gray-700/50 rounded-xl hover:bg-enostics-gray-800/50 hover:border-enostics-gray-600/50 transition-all duration-200">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Rocket className="h-5 w-5 text-enostics-green" />
+                        <h3 className="font-semibold text-white group-hover:text-enostics-green transition-colors">Quick Start</h3>
                       </div>
-                    </div>
-                  )}
+                      <p className="text-sm text-enostics-gray-400">Get up and running in minutes</p>
+                    </Link>
+                    <Link href="/playground" className="group p-6 bg-enostics-gray-900/30 border border-enostics-gray-700/50 rounded-xl hover:bg-enostics-gray-800/50 hover:border-enostics-gray-600/50 transition-all duration-200">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Play className="h-5 w-5 text-brand" />
+                        <h3 className="font-semibold text-white group-hover:text-brand transition-colors">API Playground</h3>
+                      </div>
+                      <p className="text-sm text-enostics-gray-400">Test endpoints interactively</p>
+                    </Link>
+                    <Link href="/dashboard" className="group p-6 bg-enostics-gray-900/30 border border-enostics-gray-700/50 rounded-xl hover:bg-enostics-gray-800/50 hover:border-enostics-gray-600/50 transition-all duration-200">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Settings className="h-5 w-5 text-enostics-amber" />
+                        <h3 className="font-semibold text-white group-hover:text-enostics-amber transition-colors">Dashboard</h3>
+                      </div>
+                      <p className="text-sm text-enostics-gray-400">Manage your endpoints</p>
+                    </Link>
+                  </div>
                 </div>
               </div>
-              
-              {/* Quick Stats - Compact */}
-              <div className="flex items-center justify-center gap-8 text-sm text-enostics-gray-400">
-                <div className="flex items-center gap-2">
-                  <div className="text-lg font-bold text-brand">{docSections.length}</div>
-                  <span>sections</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-lg font-bold text-enostics-green">5min</div>
-                  <span>to first endpoint</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-enostics-purple" />
-                  <span>Always up-to-date</span>
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Category Filter */}
-          <div className="max-w-6xl mx-auto mb-12">
-            <div className="flex items-center gap-4 mb-8">
-              <Filter className="h-5 w-5 text-enostics-gray-400" />
-              <span className="text-sm font-medium text-enostics-gray-400 uppercase tracking-wider">Filter by Category</span>
-            </div>
-            
-            <div className="flex flex-wrap gap-3">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`
-                    flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 border
-                    ${selectedCategory === category.id
-                      ? 'bg-enostics-blue text-white border-enostics-blue'
-                      : 'bg-enostics-gray-900 text-enostics-gray-400 border-enostics-gray-700 hover:bg-enostics-gray-800 hover:text-white hover:border-enostics-gray-600'
-                    }
-                  `}
-                >
-                  {category.icon}
-                  {category.name}
-                  <Badge 
-                    variant="outline" 
-                    className="text-xs bg-transparent border-current"
-                  >
-                    {category.id === 'all' 
-                      ? docSections.length 
-                      : docSections.filter(s => s.category === category.id).length
-                    }
-                  </Badge>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Documentation Sections Grid */}
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredSections.map((section) => (
-                <Link key={section.id} href={`/docs/section/${section.id}`}>
-                  <Card className="h-full bg-enostics-gray-900 border-enostics-gray-700 hover:border-enostics-gray-600 hover:bg-enostics-gray-800 transition-all duration-200 cursor-pointer group">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-enostics-gray-800 border border-enostics-gray-600 rounded-lg">
-                          {section.icon}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs px-2 py-1 ${difficultyColors[section.difficulty]}`}
-                          >
-                            {section.difficulty}
-                          </Badge>
-                        </div>
-                      </div>
-                      <CardTitle className="text-xl font-bold text-white group-hover:text-enostics-blue transition-colors">
-                        {section.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-enostics-gray-400 leading-relaxed mb-6">
-                        {section.description}
-                      </p>
-                      
-                      <div className="flex items-center justify-between text-sm text-enostics-gray-500 mb-4">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          {section.estimatedTime}
-                        </div>
-                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {section.tags.slice(0, 3).map((tag) => (
-                          <Badge 
-                            key={tag} 
-                            variant="outline" 
-                            className="text-xs bg-enostics-gray-800 text-enostics-gray-400 border-enostics-gray-600"
-                          >
-                            #{tag}
-                          </Badge>
-                        ))}
-                        {section.tags.length > 3 && (
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs bg-enostics-gray-800 text-enostics-gray-400 border-enostics-gray-600"
-                          >
-                            +{section.tags.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-
-            {filteredSections.length === 0 && (
-              <div className="text-center py-16">
-                <Search className="h-16 w-16 text-enostics-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No sections found</h3>
-                <p className="text-enostics-gray-400">Try adjusting your search or category filter.</p>
-              </div>
-            )}
-          </div>
+          </main>
         </div>
       </div>
-    </main>
+    </div>
   )
 } 
