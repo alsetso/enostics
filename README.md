@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MCP Server for Vercel Deployment Tools
 
-## Getting Started
+This is a Model Context Protocol (MCP) server that provides tools for managing Vercel deployments. It allows you to connect from Cursor and interact with your Vercel projects directly.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Get Vercel Deployments**: List all deployments for a specific project
+- **Get Deployment Logs**: Fetch logs for a specific deployment
+- **Get Project Info**: Retrieve detailed information about a Vercel project
+
+## Setup
+
+1. Deploy this to Vercel
+2. Set the `VERCEL_TOKEN` environment variable with your Vercel API token
+3. Connect to the MCP server from Cursor
+
+## Environment Variables
+
+- `VERCEL_TOKEN`: Your Vercel API token (required)
+
+## API Endpoints
+
+- `GET /sse` - Server-Sent Events endpoint for MCP connection
+- `POST /sse` - Tool execution endpoint
+
+## Usage with Cursor
+
+Add this to your `mcp.json` configuration:
+
+```json
+{
+  "mcpServers": {
+    "Vercel MCP": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://your-app-name.vercel.app/sse"
+      ]
+    }
+  }
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+Deploy to Vercel:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Then deploy via Vercel dashboard or CLI.

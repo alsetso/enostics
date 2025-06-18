@@ -1,26 +1,219 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Enostics Dark Theme Variables */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+
+    /* Enostics Custom Variables */
+    --enostics-grid-size: 50px;
+    --enostics-grid-opacity: 0.02;
+    --enostics-backdrop-blur: 10px;
+    
+    /* White opacity variants */
+    --white-05: rgba(255, 255, 255, 0.05);
+    --white-10: rgba(255, 255, 255, 0.10);
+    --white-20: rgba(255, 255, 255, 0.20);
+    --white-30: rgba(255, 255, 255, 0.30);
+    --white-50: rgba(255, 255, 255, 0.50);
+    --white-70: rgba(255, 255, 255, 0.70);
+    --white-90: rgba(255, 255, 255, 0.90);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply bg-enostics-gray-950 text-enostics-white font-sans antialiased;
+    @apply min-h-screen;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-enostics-gray-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-enostics-gray-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-enostics-gray-600;
+  }
+}
+
+@layer components {
+  /* Background Grid Pattern */
+  .bg-grid {
+    background-image: 
+      linear-gradient(var(--white-05) 1px, transparent 1px),
+      linear-gradient(90deg, var(--white-05) 1px, transparent 1px);
+    background-size: var(--enostics-grid-size) var(--enostics-grid-size);
+  }
+
+  /* Glassmorphism Effect */
+  .glass {
+    @apply backdrop-blur-md bg-white/5 border border-white/10;
+  }
+
+  .glass-strong {
+    @apply backdrop-blur-xl bg-white/10 border border-white/20;
+  }
+
+  /* Button Variants */
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand/80;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-brand/50;
+  }
+
+  .btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-white border border-white/20;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-white/30;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-white/10 text-white/70 hover:text-white;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-white/30;
+  }
+
+  /* Input Styles */
+  .input-base {
+    @apply bg-enostics-gray-900 border border-enostics-gray-700 text-white;
+    @apply px-3 py-2 rounded-lg transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand;
+    @apply placeholder:text-enostics-gray-500;
+  }
+
+  /* Card Styles */
+  .card-base {
+    @apply bg-enostics-gray-900/60 border border-enostics-gray-800 backdrop-blur rounded-xl;
+    @apply shadow-lg;
+  }
+
+  .card-hover {
+    @apply card-base transition-all duration-200;
+    @apply hover:border-enostics-gray-700 hover:shadow-xl;
+  }
+
+  /* Code Block Styles */
+  .code-block {
+    @apply bg-enostics-black/50 border border-enostics-gray-800;
+    @apply rounded-lg p-4 font-mono text-sm overflow-x-auto;
+  }
+
+  /* Navigation Styles */
+  .nav-link {
+    @apply text-enostics-gray-400 hover:text-white transition-colors duration-200;
+    @apply flex items-center gap-2 px-3 py-2 rounded-lg;
+    @apply hover:bg-white/5;
+  }
+
+  .nav-link:hover {
+    color: theme('colors.brand');
+  }
+
+  .nav-link-active {
+    @apply nav-link text-white bg-enostics-blue/10 border-l-2 border-enostics-blue;
+  }
+
+  /* Link Styles */
+  .link:hover {
+    color: theme('colors.brand');
+  }
+
+  /* Status Indicators */
+  .status-online {
+    @apply bg-enostics-green text-enostics-green;
+  }
+
+  .status-offline {
+    @apply bg-enostics-red text-enostics-red;
+  }
+
+  .status-warning {
+    @apply bg-enostics-amber text-enostics-amber;
+  }
+
+  /* Animations */
+  .animate-fade-in {
+    @apply animate-fade-in;
+  }
+
+  .animate-slide-in {
+    @apply animate-slide-in;
+  }
+}
+
+@layer utilities {
+  /* Text Variants */
+  .text-gradient {
+    @apply bg-gradient-to-r from-white to-enostics-gray-400 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-blue {
+    @apply bg-gradient-to-r from-enostics-blue-light to-enostics-blue-dark bg-clip-text text-transparent;
+  }
+
+  /* Spacing Utilities */
+  .section-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-narrow {
+    @apply max-w-4xl mx-auto section-padding;
+  }
+
+  .container-wide {
+    @apply max-w-7xl mx-auto section-padding;
+  }
+
+  /* Flex Utilities */
+  .flex-center {
+    @apply flex items-center justify-center;
+  }
+
+  .flex-between {
+    @apply flex items-center justify-between;
+  }
+
+  /* Border Gradient */
+  .border-gradient {
+    @apply border border-transparent bg-gradient-to-r from-enostics-blue/20 via-enostics-purple/20 to-enostics-green/20;
+    background-clip: padding-box;
+  }
 }

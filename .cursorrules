@@ -1,0 +1,103 @@
+Here’s your updated **Cursor Rules** block for the **Enostics consumer platform**, fully aligned with your universal, endpoint-first vision:
+
+---
+
+# 🧍 Enostics – Consumer Platform Rules (Updated)
+
+## 🌐 Context
+
+**Enostics** is the universal personal API layer for every individual, in every industry.
+The platform gives every user a persistent, intelligent, programmable endpoint.
+It is the simplest business ever — built on clarity, control, and connectivity.
+
+---
+
+## 🎯 MVP Priority
+
+* **Primary Goal**: Let every user claim and control a live, intelligent API endpoint
+* **Core Workflow**:
+
+  1. User creates endpoint
+  2. External services (health providers, devices, apps) send data
+  3. User views, manages, and automates from that endpoint
+* **Success Metric**: Endpoint receives and responds to data from any source (Remedy, device, user input, AI agent)
+
+---
+
+## 📏 Specific Guidelines
+
+* Endpoint creation should be one-click, branded, and permanent (`/v1/username`)
+* Users must **see data flow in real-time** via an intuitive console
+* Make endpoints feel *alive*: logs, memory, health updates, agent traces
+* Auto-generate REST docs for each user endpoint
+* Clear public/private toggle for each route
+* Add SDK-ready code samples for POST/GET (JS, Python, cURL)
+* Endpoint sharing = social layer (e.g., /public, /stream)
+* Core value: "**The user is the app.**"
+
+---
+
+## 🧠 Database Tables
+
+* Prefix all with `enostics_`
+* Key tables:
+
+  * `enostics_endpoints`: endpoint metadata + user bindings
+  * `enostics_data`: incoming data logs (health, text, events)
+  * `enostics_memory`: context + summaries for agents
+  * `enostics_agents`: actions, outputs, agent history
+* Shared tables:
+
+  * `users`, `user_profiles`, `devices`, `event_log`
+  * `endpoint_keys`: for API key & token permissions
+
+---
+
+## 🧪 Port & URLs
+
+* Local: `http://localhost:3000`
+* Production: `https://enostics.com`
+* API Gateway: `https://api.enostics.com/v1/:username`
+
+---
+
+## 🔧 Technical Requirements
+
+* Framework: **Next.js + TypeScript + Tailwind CSS**
+* SSR enabled for SEO + fast cold starts
+* RESTful API via Next.js routes (Edge-ready)
+* Endpoint middleware: validate token, log event, store payload
+* CLI / SDK-ready functions
+* React Native & Expo for mobile (2025+ roadmap)
+* Supabase (RLS) for data & auth
+
+---
+
+## 🔐 Privacy & Security
+
+* Users own and control 100% of their data
+* AES-encrypted health inputs (device-to-endpoint)
+* Rate limiting per route (bot protection + fairness)
+* Role-based permissions (public, private, agent-only)
+* All agent executions isolated + logged
+
+---
+
+## 🔌 Integration Points
+
+* 🔁 **Remedy Testing**: Device and test result pipelines to `/inbox`
+* 🔑 **Unified Auth**: Supabase auth, extensible to providers/orgs
+* 🧠 **Alset Integration**: SDK & CLI to send/receive data via endpoints
+* 📈 **Activity Logging**: `event_log` to track usage, failures, public views
+* 🧰 **Custom Agents**: Allow AI agents to mount on endpoints as functions
+* ⚙️ **Device Registration**: Allow BLE/IOT pairing → send to endpoint
+
+---
+
+Would you like me to turn this into:
+
+* A visual **developer onboarding doc**?
+* A **Postman collection or OpenAPI spec**?
+* CLI tools or Supabase function scaffolds?
+
+You now have the platform logic that *any system in the world* can build on.
