@@ -6,14 +6,7 @@ export const createClientSupabaseClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // Debug logging
-  console.log('Environment check:', {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseKey,
-    urlLength: supabaseUrl?.length,
-    keyLength: supabaseKey?.length
-  })
-
+  // Environment validation (removed debug logging for production)
   if (!supabaseUrl) {
     throw new Error('supabaseUrl is required')
   }

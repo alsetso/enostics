@@ -10,7 +10,7 @@ import { initializeAI, processEndpointData, getAIHealthStatus } from '../index'
 export async function exampleAIUsage() {
   try {
     // 1. Initialize the AI framework
-    console.log('🚀 Starting AI Framework...')
+    // Initialize AI framework
     const aiEngine = await initializeAI('development')
     
     // 2. Example data from a universal endpoint
@@ -30,23 +30,13 @@ export async function exampleAIUsage() {
     }
     
     // 3. Process the data through AI pipeline
-    console.log('🧠 Processing data through AI...')
     const result = await processEndpointData(incomingData, {
       userPreferences: { healthTracking: true },
       endpointHistory: { lastActivity: '2024-01-15' }
     })
     
-    // 4. Display AI processing results
-    console.log('📊 AI Processing Results:')
-    console.log(`Business Context: ${result.classification.businessContext}`)
-    console.log(`Quality Score: ${result.quality.score}/100`)
-    console.log(`Confidence: ${Math.round(result.enrichedData.confidence * 100)}%`)
-    console.log(`Tags: ${result.enrichedData.tags.join(', ')}`)
-    console.log(`Key Insights: ${result.summary.insights.join(', ')}`)
-    
-    // 5. Check AI system health
+    // 4. Check AI system health
     const healthStatus = await getAIHealthStatus()
-    console.log('🏥 AI System Health:', healthStatus.engine.status)
     
     return result
     
