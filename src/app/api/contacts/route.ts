@@ -13,51 +13,46 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
-    const relationship = searchParams.get('relationship')
-    const favorites = searchParams.get('favorites') === 'true'
 
-    // Build query
+    // Get all public endpoints (which can act as "contacts")
     let query = supabase
-      .from('enostics_inbox_contacts')
+      .from('enostics_endpoints')
       .select(`
         id,
-        contact_username,
-        contact_display_name,
-        contact_avatar_url,
-        relationship_type,
-        is_favorite,
-        can_send_health_data,
-        can_send_financial_data,
-        can_send_location_data,
-        allowed_data_types,
-        last_sent_at,
-        total_messages_sent,
+        name,
+        url_path,
+        description,
+        user_id,
+        is_active,
+        is_public,
         created_at
       `)
-      .eq('user_id', user.id)
-      .eq('is_blocked', false)
-      .order('is_favorite', { ascending: false })
-      .order('contact_display_name')
+      .eq('is_active', true)
+      .eq('is_public', true)
+      .order('name')
 
-    // Apply filters
+    // Apply search filter
     if (search) {
-      query = query.or(`contact_display_name.ilike.%${search}%,contact_username.ilike.%${search}%`)
-    }
-    
-    if (relationship) {
-      query = query.eq('relationship_type', relationship)
-    }
-    
-    if (favorites) {
-      query = query.eq('is_favorite', true)
+      query = query.or(`name.ilike.%${search}%,url_path.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
-    const { data: contacts, error } = await query
+    const { data: endpoints, error } = await query
 
     if (error) {
-      console.error('Error fetching contacts:', error)
-      return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 })
+      console.error('Error fetching endpoints:', error)
+      return NextResponse.json({ error: 'Failed to fetch endpoints' }, { status: 500 })
     }
+
+    // Transform endpoints to contact-like format
+    const contacts = endpoints?.map(endpoint => ({
+      id: endpoint.id,
+      contact_username: endpoint.url_path,
+      contact_display_name: endpoint.name,
+      contact_description: endpoint.description,
+      endpoint_url: `/api/v1/${endpoint.url_path}`,
+      is_own_endpoint: endpoint.user_id === user.id,
+      created_at: endpoint.created_at
+    })) || []
 
     return NextResponse.json({ contacts })
 
@@ -78,56 +73,42 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { 
-      contact_username, 
-      display_name, 
-      relationship_type = 'contact',
-      permissions = {}
-    } = body
+    const { endpoint_url, message } = body
 
-    if (!contact_username) {
-      return NextResponse.json({ error: 'Contact username is required' }, { status: 400 })
+    if (!endpoint_url) {
+      return NextResponse.json({ error: 'Endpoint URL is required' }, { status: 400 })
     }
 
-    // Use the helper function to add contact
-    const { data, error } = await supabase.rpc('add_enostics_contact', {
-      p_contact_username: contact_username,
-      p_display_name: display_name,
-      p_relationship_type: relationship_type
+    if (!message) {
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+    }
+
+    // Send the message to the endpoint
+    const response = await fetch(endpoint_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Enostics-Contact/1.0'
+      },
+      body: JSON.stringify({
+        type: 'contact_message',
+        message,
+        sender: user.email,
+        timestamp: new Date().toISOString()
+      })
     })
 
-    if (error) {
-      console.error('Error adding contact:', error)
-      return NextResponse.json({ 
-        error: error.message || 'Failed to add contact' 
-      }, { status: 400 })
-    }
-
-    // Update permissions if provided
-    if (Object.keys(permissions).length > 0) {
-      const { error: updateError } = await supabase
-        .from('enostics_inbox_contacts')
-        .update({
-          can_send_health_data: permissions.health || true,
-          can_send_financial_data: permissions.financial || false,
-          can_send_location_data: permissions.location || false,
-          allowed_data_types: permissions.data_types || ['message', 'note', 'event']
-        })
-        .eq('id', data)
-
-      if (updateError) {
-        console.error('Error updating permissions:', updateError)
-      }
-    }
+    const responseData = await response.text()
 
     return NextResponse.json({ 
-      success: true, 
-      contact_id: data,
-      message: 'Contact added successfully' 
+      success: response.ok,
+      status: response.status,
+      response: responseData,
+      message: response.ok ? 'Message sent successfully' : 'Failed to send message'
     })
 
   } catch (error) {
-    console.error('Add contact API error:', error)
+    console.error('Send message API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 

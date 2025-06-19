@@ -1,144 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase'
 
-// Seeded data for bremercole@gmail.com - will be replaced with real Supabase data
-const seededInboxData = [
-  {
-    id: '1',
-    user_id: 'bremercole',
-    sender: 'Apple Health',
-    source: 'iot_device',
-    type: 'health_data',
-    subject: 'Daily Step Count Update',
-    preview: 'Steps: 8,432 | Distance: 4.2 miles | Calories: 412',
-    timestamp: '2024-01-15T14:30:22Z',
-    is_read: false,
-    is_starred: true,
-    source_ip: '192.168.1.104',
-    user_agent: 'HealthKit/1.0 (iPhone; iOS 17.2.1)',
-    payload: { 
-      steps: 8432, 
-      distance: 4.2, 
-      calories: 412,
-      activeMinutes: 67,
-      heartRateAvg: 78,
-      sleepHours: 7.5,
-      deviceId: 'iPhone-A2D43F21',
-      timestamp: '2024-01-15T14:30:22Z'
-    },
-    created_at: '2024-01-15T14:30:22Z'
-  },
-  {
-    id: '2',
-    user_id: 'bremercole',
-    sender: 'Stripe Webhook',
-    source: 'webhook',
-    type: 'financial_data',
-    subject: 'Payment Received',
-    preview: 'Amount: $1,299.00 | Customer: healthcare_provider_001',
-    timestamp: '2024-01-15T11:15:33Z',
-    is_read: true,
-    is_starred: false,
-    source_ip: '54.187.174.169',
-    user_agent: 'Stripe-Webhook/1.0',
-    payload: { 
-      amount: 1299.00,
-      currency: 'USD',
-      customer: 'healthcare_provider_001',
-      paymentMethod: 'card_1234',
-      description: 'Health API Subscription - Premium Plan',
-      stripeId: 'pi_3OkLjKA4Z9vF8ePa1mEt2QxY',
-      metadata: {
-        planType: 'premium',
-        billingCycle: 'annual'
-      }
-    },
-    created_at: '2024-01-15T11:15:33Z'
-  },
-  {
-    id: '3',
-    user_id: 'bremercole',
-    sender: 'GPT-4 Assistant',
-    source: 'gpt_agent',
-    type: 'message',
-    subject: 'Health Insight Analysis Complete',
-    preview: 'Analyzed your recent health trends and found 3 key insights...',
-    timestamp: '2024-01-14T16:22:11Z',
-    is_read: true,
-    is_starred: false,
-    source_ip: '140.82.112.3',
-    user_agent: 'OpenAI-GPT/4.0',
-    payload: { 
-      insights: [
-        'Your sleep quality improved 23% this week',
-        'Step count trending upward (+12% vs last month)',
-        'Heart rate variability suggests good recovery'
-      ],
-      analysisType: 'health_trends',
-      confidence: 0.94,
-      dataPoints: 847,
-      model: 'gpt-4-turbo',
-      processingTime: '2.3s'
-    },
-    created_at: '2024-01-14T16:22:11Z'
-  },
-  {
-    id: '4',
-    user_id: 'bremercole',
-    sender: 'Tesla API',
-    source: 'api_client',
-    type: 'sensor_data',
-    subject: 'Vehicle Status Update',
-    preview: 'Battery: 87% | Range: 289 miles | Location: Home',
-    timestamp: '2024-01-14T20:45:17Z',
-    is_read: false,
-    is_starred: true,
-    source_ip: '209.133.79.61',
-    user_agent: 'Tesla-API/2.1',
-    payload: { 
-      battery: 87,
-      range: 289,
-      location: 'Home',
-      odometer: 23847,
-      isCharging: true,
-      temperature: 72,
-      coordinates: {
-        lat: 37.7749,
-        lng: -122.4194
-      },
-      vin: '5YJ3E1EA4KF123456'
-    },
-    created_at: '2024-01-14T20:45:17Z'
-  },
-  {
-    id: '5',
-    user_id: 'bremercole',
-    sender: 'Notion Webhook',
-    source: 'webhook',
-    type: 'event',
-    subject: 'Database Updated', 
-    preview: 'New entry added to Health Tracking database',
-    timestamp: '2024-01-13T09:30:44Z',
-    is_read: true,
-    is_starred: false,
-    source_ip: '104.16.132.229',
-    user_agent: 'Notion-Webhook/1.0',
-    payload: { 
-      database: 'Health Tracking',
-      action: 'entry_added',
-      pageId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      properties: {
-        'Date': '2024-01-13',
-        'Weight': '175 lbs',
-        'Energy Level': 'High',
-        'Notes': 'Feeling great after morning workout'
-      },
-      userId: 'notion_user_123'
-    },
-    created_at: '2024-01-13T09:30:44Z'
-  }
-]
-
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
@@ -154,115 +16,218 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
     const search = searchParams.get('search') || ''
 
-    // Try to get real data from Supabase first
-    const { data: realData, error: dbError } = await supabase
-      .from('enostics_public_inbox')
-      .select('*')
+    // Get user's endpoints first
+    const { data: endpoints, error: endpointsError } = await supabase
+      .from('endpoints')
+      .select('id, name, url_path')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+      .eq('is_active', true)
 
-    let responseData = []
-    let isSeeded = false
+    if (endpointsError) {
+      console.error('Error fetching endpoints:', endpointsError)
+      return NextResponse.json({ error: 'Failed to fetch endpoints' }, { status: 500 })
+    }
 
-    if (dbError || !realData || realData.length === 0) {
-      // Fallback to seeded data for demo purposes
-      console.log('Using seeded data:', dbError?.message || 'No real data found')
-      
-      let filteredData = seededInboxData.filter(item => 
-        item.user_id === 'bremercole' && // Demo user
-        (item.sender.toLowerCase().includes(search.toLowerCase()) ||
-         item.subject.toLowerCase().includes(search.toLowerCase()) ||
-         item.preview.toLowerCase().includes(search.toLowerCase()))
-      )
-
-      filteredData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      responseData = filteredData.slice(offset, offset + limit)
-      isSeeded = true
-    } else {
-      // Use real data and apply search filter
-      responseData = realData.filter(item => {
-        const searchStr = search.toLowerCase()
-        const payloadStr = JSON.stringify(item.payload || {}).toLowerCase()
-        return payloadStr.includes(searchStr) ||
-               (item.payload_source || '').toLowerCase().includes(searchStr) ||
-               (item.payload_type || '').toLowerCase().includes(searchStr)
+    if (!endpoints || endpoints.length === 0) {
+      return NextResponse.json({
+        data: [],
+        total: 0,
+        unread: 0,
+        starred: 0,
+        hasMore: false
       })
     }
 
-    // Get counts for real data or seeded data
-    let totalCount = responseData.length
-    let unreadCount = 0
-    let starredCount = 0
+    const endpointIds = endpoints.map(ep => ep.id)
 
-    if (isSeeded) {
-      totalCount = seededInboxData.length
-      unreadCount = seededInboxData.filter(item => !item.is_read).length
-      starredCount = seededInboxData.filter(item => item.is_starred).length
-    } else {
-      // Get counts from database
-      const { count } = await supabase
-        .from('enostics_public_inbox')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-      
-      totalCount = count || 0
-      unreadCount = 0 // TODO: Add is_read field to table
-      starredCount = 0 // TODO: Add is_starred field to table
+    // Build the main data query
+    let query = supabase
+      .from('data')
+      .select(`
+        id,
+        endpoint_id,
+        data,
+        source_ip,
+        headers,
+        user_agent,
+        processed_at,
+        status,
+        endpoints!inner(
+          name,
+          url_path
+        )
+      `)
+      .in('endpoint_id', endpointIds)
+      .order('processed_at', { ascending: false })
+
+    // Apply search filter if provided
+    if (search) {
+      // Search in JSON data
+      query = query.or(`data::text.ilike.%${search}%`)
     }
 
-    return NextResponse.json({
-      data: responseData,
-      total: totalCount,
-      unread_count: unreadCount,
-      starred_count: starredCount,
-      meta: {
-        limit,
-        offset,
-        search,
-        user: user.id,
-        is_seeded: isSeeded,
-        data_source: isSeeded ? 'seeded_demo' : 'supabase_real'
+    // Apply pagination
+    query = query.range(offset, offset + limit - 1)
+
+    const { data: rawData, error: dataError } = await query
+
+    if (dataError) {
+      console.error('Error fetching inbox data:', dataError)
+      return NextResponse.json({ error: 'Failed to fetch inbox data' }, { status: 500 })
+    }
+
+    // Transform the data to match the expected format
+    const transformedData = (rawData || []).map(item => {
+      const payload = item.data || {}
+      
+      // Extract meaningful information from the payload
+      const getSubject = () => {
+        if (payload.subject) return payload.subject
+        if (payload.title) return payload.title
+        if (payload.event) return `Event: ${payload.event}`
+        if (payload.type) return `${payload.type} data received`
+        return 'Data received'
+      }
+
+      const getPreview = () => {
+        if (payload.message) return payload.message
+        if (payload.description) return payload.description
+        if (payload.content) return payload.content
+        
+        // Try to create a meaningful preview from the data
+        const keys = Object.keys(payload).slice(0, 3)
+        if (keys.length > 0) {
+          return keys.map(key => `${key}: ${JSON.stringify(payload[key])}`).join(' | ')
+        }
+        return 'No preview available'
+      }
+
+      const getSender = () => {
+        if (payload.sender) return payload.sender
+        if (payload.source) return payload.source
+        if (payload.from) return payload.from
+        if (item.user_agent) {
+          // Extract app name from user agent
+          const ua = item.user_agent
+          if (ua.includes('Postman')) return 'Postman'
+          if (ua.includes('curl')) return 'cURL'
+          if (ua.includes('Python')) return 'Python Script'
+          if (ua.includes('Node.js')) return 'Node.js App'
+          return 'Unknown Client'
+        }
+        return 'API Client'
+      }
+
+      const getType = () => {
+        if (payload.type) return payload.type
+        if (payload.event_type) return payload.event_type
+        return 'data'
+      }
+
+      return {
+        id: item.id,
+        user_id: user.id,
+        sender: getSender(),
+        source: 'api_endpoint',
+        type: getType(),
+        subject: getSubject(),
+        preview: getPreview().substring(0, 100),
+        timestamp: new Date(item.processed_at).toLocaleString(),
+        is_read: item.status === 'processed', // Consider processed items as read
+        is_starred: false, // We'll add starring functionality later
+        source_ip: item.source_ip,
+        user_agent: item.user_agent,
+        payload: payload,
+        endpoint_name: (item.endpoints as any)?.[0]?.name || 'Unknown Endpoint',
+        endpoint_path: (item.endpoints as any)?.[0]?.url_path || '',
+        raw_data: item
       }
     })
-    
+
+    // Get total count for pagination
+    const { count: totalCount } = await supabase
+      .from('data')
+      .select('*', { count: 'exact', head: true })
+      .in('endpoint_id', endpointIds)
+
+    // Calculate stats
+    const unreadCount = transformedData.filter(item => !item.is_read).length
+    const starredCount = transformedData.filter(item => item.is_starred).length
+
+    return NextResponse.json({
+      data: transformedData,
+      total: totalCount || 0,
+      unread: unreadCount,
+      starred: starredCount,
+      hasMore: (offset + limit) < (totalCount || 0),
+      endpoints: endpoints
+    })
+
   } catch (error) {
-    console.error('Error fetching inbox data:', error)
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch inbox data',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    )
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-// POST endpoint to mark items as read/starred
+// POST endpoint for manually adding data (compose functionality)
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createServerSupabaseClient()
+    
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    const { action, item_ids, user } = body
+    const { endpoint_id, data, data_type = 'manual', source_description } = body
 
-    // For now, just return success since we're using seeded data
-    // In the future, this will update the actual Supabase records
+    // Validate that the endpoint belongs to the user
+    const { data: endpoint, error: endpointError } = await supabase
+      .from('endpoints')
+      .select('id, name')
+      .eq('id', endpoint_id)
+      .eq('user_id', user.id)
+      .single()
 
-    return NextResponse.json({
-      success: true,
-      action,
-      updated_count: item_ids?.length || 0,
-      message: `Successfully ${action} ${item_ids?.length || 0} items`,
-      is_seeded: true
+    if (endpointError || !endpoint) {
+      return NextResponse.json({ error: 'Endpoint not found or unauthorized' }, { status: 404 })
+    }
+
+    // Insert the data
+    const { data: insertedData, error: insertError } = await supabase
+      .from('data')
+      .insert({
+        endpoint_id,
+        data,
+        source_ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+        headers: {
+          'user-agent': request.headers.get('user-agent'),
+          'content-type': request.headers.get('content-type'),
+          source_description
+        },
+        user_agent: request.headers.get('user-agent'),
+        content_type: request.headers.get('content-type'),
+        data_size: JSON.stringify(data).length,
+        status: 'received'
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Error inserting data:', insertError)
+      return NextResponse.json({ error: 'Failed to insert data' }, { status: 500 })
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      data: insertedData,
+      message: 'Data added successfully'
     })
 
   } catch (error) {
-    console.error('Error updating inbox items:', error)
-    return NextResponse.json(
-      { 
-        error: 'Failed to update inbox items',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    )
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 

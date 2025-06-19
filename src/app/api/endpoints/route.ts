@@ -16,7 +16,7 @@ export async function GET() {
 
     // Get user's endpoints
     const { data: endpoints, error } = await supabase
-      .from('enostics_endpoints')
+      .from('endpoints')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Check if URL path is already taken by this user
     const { data: existing } = await supabase
-      .from('enostics_endpoints')
+      .from('endpoints')
       .select('id')
       .eq('user_id', user.id)
       .eq('url_path', url_path)
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     // Create endpoint
     const { data: endpoint, error } = await supabase
-      .from('enostics_endpoints')
+      .from('endpoints')
       .insert({
         user_id: user.id,
         name,
@@ -139,7 +139,7 @@ export async function PUT(request: NextRequest) {
 
     // Update endpoint (RLS will ensure user can only update their own)
     const { data: endpoint, error } = await supabase
-      .from('enostics_endpoints')
+      .from('endpoints')
       .update({
         name,
         description,
@@ -189,7 +189,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete endpoint (RLS will ensure user can only delete their own)
     const { error } = await supabase
-      .from('enostics_endpoints')
+      .from('endpoints')
       .delete()
       .eq('id', id)
       .eq('user_id', user.id)

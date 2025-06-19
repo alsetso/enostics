@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { WebhookManager } from '@/components/features/webhook-manager'
+import { WebhookDashboard } from '@/components/features'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Webhook, Activity, Link } from 'lucide-react'
@@ -88,21 +88,7 @@ export default function WebhooksPage() {
       </div>
 
       {/* Webhooks Content */}
-      {endpoints.length > 0 ? (
-        <WebhookManager
-          endpoints={endpoints}
-          onUpdate={fetchEndpoints}
-        />
-      ) : (
-        <div className="text-center py-12 text-enostics-gray-400">
-          <Webhook className="h-16 w-16 mx-auto mb-4 text-enostics-gray-600" />
-          <h3 className="text-lg font-medium mb-2">No Endpoints for Webhooks</h3>
-          <p className="mb-4">Create an endpoint first to configure webhook forwarding.</p>
-          <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
-            Create Your First Endpoint
-          </Button>
-        </div>
-      )}
+      <WebhookDashboard />
     </div>
   )
 } 

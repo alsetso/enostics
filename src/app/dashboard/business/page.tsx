@@ -24,7 +24,6 @@ import Link from 'next/link'
 
 export default function BusinessPage() {
   const [user, setUser] = useState<any>(null)
-  const [userTier, setUserTier] = useState<'free' | 'business'>('free')
   const [endpoints, setEndpoints] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +38,7 @@ export default function BusinessPage() {
       setLoading(true)
       setError(null)
       
-      // Get user and subscription info
+      // Get user
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) {
         throw authError
@@ -48,26 +47,15 @@ export default function BusinessPage() {
       setUser(user)
       
       if (user?.id) {
-        // Fetch user profile to get subscription info
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('subscription_tier')
-          .eq('user_id', user.id)
-          .single()
-
-        setUserTier(profile?.subscription_tier === 'business' ? 'business' : 'free')
-
-        // If business user, fetch endpoints
-        if (profile?.subscription_tier === 'business') {
-          try {
-            const endpointsResponse = await fetch('/api/endpoints')
-            if (endpointsResponse.ok) {
-              const endpointsData = await endpointsResponse.json()
-              setEndpoints(Array.isArray(endpointsData.endpoints) ? endpointsData.endpoints : [])
-            }
-          } catch (endpointError) {
-            console.warn('Error fetching endpoints:', endpointError)
+        // Fetch endpoints for all users
+        try {
+          const endpointsResponse = await fetch('/api/endpoints')
+          if (endpointsResponse.ok) {
+            const endpointsData = await endpointsResponse.json()
+            setEndpoints(Array.isArray(endpointsData.endpoints) ? endpointsData.endpoints : [])
           }
+        } catch (endpointError) {
+          console.warn('Error fetching endpoints:', endpointError)
         }
       }
       
@@ -152,8 +140,8 @@ export default function BusinessPage() {
     )
   }
 
-  // Show upsell for free tier users
-  if (userTier !== 'business') {
+  // Always show the business dashboard now
+  if (false) {
     return (
       <div className="space-y-8">
         {/* Header */}

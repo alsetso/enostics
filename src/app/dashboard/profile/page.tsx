@@ -6,10 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { User, Mail, Calendar, Save, MapPin, Clock, Phone, Briefcase, Building, Award, Heart, Smile } from 'lucide-react'
+import { User, Mail, Calendar, Save, Clock, CheckCircle, XCircle, ArrowRight } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
 import ProfileSidebar from '@/components/layout/profile-sidebar'
-import EmojiPicker from '@/components/ui/emoji-picker'
 
 interface Profile {
   id: string
@@ -18,17 +17,15 @@ interface Profile {
   username: string
   display_name: string
   bio: string
-  location: string
   timezone: string
-  phone: string
-  avatar_url: string
-  profile_emoji: string
-  job_title: string
-  company: string
-  industry: string
-  interests: string[]
-  expertise: string[]
   created_at: string
+  onboarding_completed: boolean
+  onboarding_steps: {
+    plan_confirmation?: boolean
+    personal_info?: boolean
+    endpoint_setup?: boolean
+    welcome_tour?: boolean
+  }
 }
 
 export default function ProfilePage() {
@@ -41,16 +38,7 @@ export default function ProfilePage() {
     username: '',
     display_name: '',
     bio: '',
-    location: '',
-    timezone: '',
-    phone: '',
-    avatar_url: '',
-    profile_emoji: '',
-    job_title: '',
-    company: '',
-    industry: '',
-    interests: '',
-    expertise: ''
+    timezone: ''
   })
 
   const supabase = createClientSupabaseClient()
@@ -89,16 +77,7 @@ export default function ProfilePage() {
         username: data.username || '',
         display_name: data.display_name || '',
         bio: data.bio || '',
-        location: data.location || '',
-        timezone: data.timezone || '',
-        phone: data.phone || '',
-        avatar_url: data.avatar_url || '',
-        profile_emoji: data.profile_emoji || '',
-        job_title: data.job_title || '',
-        company: data.company || '',
-        industry: data.industry || '',
-        interests: Array.isArray(data.interests) ? data.interests.join(', ') : '',
-        expertise: Array.isArray(data.expertise) ? data.expertise.join(', ') : ''
+        timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
       })
     } catch (error) {
       console.error('Error:', error)
@@ -112,17 +91,6 @@ export default function ProfilePage() {
 
     setSaving(true)
     try {
-      // Convert comma-separated strings back to arrays
-      const interestsArray = formData.interests
-        .split(',')
-        .map(item => item.trim())
-        .filter(item => item.length > 0)
-      
-      const expertiseArray = formData.expertise
-        .split(',')
-        .map(item => item.trim())
-        .filter(item => item.length > 0)
-
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -130,16 +98,7 @@ export default function ProfilePage() {
           username: formData.username,
           display_name: formData.display_name,
           bio: formData.bio,
-          location: formData.location,
           timezone: formData.timezone,
-          phone: formData.phone,
-          avatar_url: formData.avatar_url,
-          profile_emoji: formData.profile_emoji,
-          job_title: formData.job_title,
-          company: formData.company,
-          industry: formData.industry,
-          interests: interestsArray,
-          expertise: expertiseArray,
           updated_at: new Date().toISOString()
         })
         .eq('id', profile.id)
@@ -166,10 +125,10 @@ export default function ProfilePage() {
       <div>
         <h2 className="text-2xl font-bold text-white mb-2 flex items-center">
           <User className="mr-3 h-6 w-6 text-enostics-purple" />
-          Personal Information
+          Profile Information
         </h2>
         <p className="text-enostics-gray-400 mb-6">
-          Basic information and contact details
+          Your endpoint identity and basic information
         </p>
       </div>
 
@@ -184,8 +143,29 @@ export default function ProfilePage() {
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="Enter your full name"
+              placeholder="Your full name"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username" className="text-enostics-gray-300 font-medium">
+              Username <span className="text-enostics-gray-500">(Endpoint Path)</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="username"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20 pl-20"
+                placeholder="username"
+              />
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-enostics-gray-500 text-sm">
+                /v1/
+              </div>
+            </div>
+            <p className="text-xs text-enostics-gray-500">
+              Your endpoint will be: api.enostics.com/v1/{formData.username || 'username'}
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -197,84 +177,26 @@ export default function ProfilePage() {
               value={formData.display_name}
               onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
               className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="How you'd like to be shown"
+              placeholder="How you'd like to appear publicly"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="username" className="text-enostics-gray-300 font-medium">
-              Username
+            <Label htmlFor="timezone" className="text-enostics-gray-300 font-medium">
+              <Clock className="inline h-4 w-4 mr-1" />
+              Timezone
             </Label>
             <Input
-              id="username"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              id="timezone"
+              value={formData.timezone}
+              onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
               className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="Enter your username"
+              placeholder="Your timezone"
             />
-            <div className="flex items-center gap-2 text-xs text-enostics-gray-500 bg-enostics-gray-800/30 p-2 rounded">
-              <span>Your endpoint:</span>
-              <code className="text-enostics-purple font-mono">
-                enostics.com/api/{formData.username || 'your-username'}
-              </code>
-            </div>
+            <p className="text-xs text-enostics-gray-500">
+              Used for API logs and activity timestamps
+            </p>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="profile_emoji" className="text-enostics-gray-300 font-medium">
-              <Smile className="inline h-4 w-4 mr-1" />
-              Profile Emoji
-            </Label>
-            <EmojiPicker
-              value={formData.profile_emoji}
-              onChange={(emoji) => setFormData({ ...formData, profile_emoji: emoji })}
-              placeholder="😊"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="text-enostics-gray-300 font-medium">
-              <Phone className="inline h-4 w-4 mr-1" />
-              Phone Number
-            </Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="+1 (555) 123-4567"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="location" className="text-enostics-gray-300 font-medium">
-              <MapPin className="inline h-4 w-4 mr-1" />
-              Location
-            </Label>
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="City, Country"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="avatar_url" className="text-enostics-gray-300 font-medium">
-            Avatar URL
-          </Label>
-          <Input
-            id="avatar_url"
-            value={formData.avatar_url}
-            onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-            className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-            placeholder="https://example.com/your-avatar.jpg"
-          />
-          <p className="text-xs text-enostics-gray-500">
-            URL to your profile picture
-          </p>
         </div>
 
         <div className="space-y-2">
@@ -285,129 +207,11 @@ export default function ProfilePage() {
             id="bio"
             value={formData.bio}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, bio: e.target.value })}
-            className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white min-h-[100px] focus:border-enostics-purple focus:ring-enostics-purple/20"
-            placeholder="Tell us about yourself..."
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="timezone" className="text-enostics-gray-300 font-medium">
-            <Clock className="inline h-4 w-4 mr-1" />
-            Timezone
-          </Label>
-          <Input
-            id="timezone"
-            value={formData.timezone}
-            onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-            className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-            placeholder="e.g., America/New_York, Europe/London"
-          />
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderProfessionalSection = () => (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-2 flex items-center">
-          <Briefcase className="mr-3 h-6 w-6 text-enostics-purple" />
-          Professional Information
-        </h2>
-        <p className="text-enostics-gray-400 mb-6">
-          Work and career information
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="job_title" className="text-enostics-gray-300 font-medium">
-              Job Title
-            </Label>
-            <Input
-              id="job_title"
-              value={formData.job_title}
-              onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-              className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="Software Engineer, Doctor, etc."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="company" className="text-enostics-gray-300 font-medium">
-              <Building className="inline h-4 w-4 mr-1" />
-              Company
-            </Label>
-            <Input
-              id="company"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="Your company name"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="industry" className="text-enostics-gray-300 font-medium">
-              Industry
-            </Label>
-            <Input
-              id="industry"
-              value={formData.industry}
-              onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-              className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white focus:border-enostics-purple focus:ring-enostics-purple/20"
-              placeholder="Healthcare, Technology, Finance, etc."
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderInterestsSection = () => (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-2 flex items-center">
-          <Heart className="mr-3 h-6 w-6 text-enostics-purple" />
-          Skills & Interests
-        </h2>
-        <p className="text-enostics-gray-400 mb-6">
-          Your expertise and interests
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="interests" className="text-enostics-gray-300 font-medium">
-            Interests
-          </Label>
-          <Textarea
-            id="interests"
-            value={formData.interests}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, interests: e.target.value })}
             className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white min-h-[80px] focus:border-enostics-purple focus:ring-enostics-purple/20"
-            placeholder="Health, Technology, AI, Fitness, Reading (separate with commas)"
+            placeholder="Brief description about yourself or your endpoint usage..."
           />
           <p className="text-xs text-enostics-gray-500">
-            Separate multiple interests with commas
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="expertise" className="text-enostics-gray-300 font-medium">
-            <Award className="inline h-4 w-4 mr-1" />
-            Expertise
-          </Label>
-          <Textarea
-            id="expertise"
-            value={formData.expertise}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, expertise: e.target.value })}
-            className="bg-enostics-gray-800/50 border-enostics-gray-600 text-white min-h-[80px] focus:border-enostics-purple focus:ring-enostics-purple/20"
-            placeholder="JavaScript, Healthcare Analytics, Machine Learning (separate with commas)"
-          />
-          <p className="text-xs text-enostics-gray-500">
-            Separate multiple areas of expertise with commas
+            Optional description that may appear in public endpoint documentation
           </p>
         </div>
       </div>
@@ -422,7 +226,7 @@ export default function ProfilePage() {
           Account Information
         </h2>
         <p className="text-enostics-gray-400 mb-6">
-          Email and account details
+          Account details and setup status
         </p>
       </div>
 
@@ -449,6 +253,92 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Onboarding Status Section */}
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold text-white mb-4">Setup Status</h3>
+          
+          <div className="bg-enostics-gray-800/30 rounded-lg border border-enostics-gray-700/50 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                {profile?.onboarding_completed ? (
+                  <CheckCircle className="h-6 w-6 text-green-500" />
+                ) : (
+                  <XCircle className="h-6 w-6 text-yellow-500" />
+                )}
+                <div>
+                  <p className="text-white font-medium">
+                    {profile?.onboarding_completed ? 'Setup Complete' : 'Setup Incomplete'}
+                  </p>
+                  <p className="text-sm text-enostics-gray-400">
+                    {profile?.onboarding_completed 
+                      ? 'Your endpoint is ready to receive data'
+                      : 'Complete setup to unlock all endpoint features'
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              {!profile?.onboarding_completed && (
+                <Button
+                  size="sm"
+                  onClick={() => window.location.href = '/onboarding'}
+                  className="bg-enostics-purple hover:bg-enostics-purple/80"
+                >
+                  Continue Setup
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              )}
+            </div>
+
+            {/* Step Progress */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-enostics-gray-300">Setup Steps:</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { key: 'plan_confirmation', label: 'Plan Confirmation' },
+                  { key: 'personal_info', label: 'Profile Information' },
+                  { key: 'endpoint_setup', label: 'Endpoint Configuration' },
+                  { key: 'welcome_tour', label: 'Platform Tour' }
+                ].map(step => {
+                  const completed = profile?.onboarding_steps?.[step.key as keyof typeof profile.onboarding_steps] || false
+                  return (
+                    <div key={step.key} className="flex items-center gap-2">
+                      {completed ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-enostics-gray-500" />
+                      )}
+                      <span className={`text-sm ${completed ? 'text-green-400' : 'text-enostics-gray-400'}`}>
+                        {step.label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            {profile?.onboarding_steps && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-enostics-gray-400">Progress</span>
+                  <span className="text-xs text-enostics-gray-400">
+                    {Object.values(profile.onboarding_steps).filter(Boolean).length}/4 completed
+                  </span>
+                </div>
+                <div className="w-full bg-enostics-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-enostics-purple h-2 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${(Object.values(profile.onboarding_steps).filter(Boolean).length / 4) * 100}%` 
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -457,10 +347,6 @@ export default function ProfilePage() {
     switch (activeSection) {
       case 'personal':
         return renderPersonalSection()
-      case 'professional':
-        return renderProfessionalSection()
-      case 'interests':
-        return renderInterestsSection()
       case 'account':
         return renderAccountSection()
       default:
@@ -484,6 +370,7 @@ export default function ProfilePage() {
           activeSection={activeSection} 
           onSectionChange={setActiveSection}
           username={formData.username}
+          simplified={true}
         />
 
         {/* Main Content */}

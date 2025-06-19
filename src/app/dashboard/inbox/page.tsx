@@ -42,11 +42,15 @@ import {
   MapPin,
   Database,
   Plus,
-  Send
+  Send,
+  Link,
+  Inbox
 } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
 import QRCodeLib from 'qrcode'
-import { ComposeMessageModal } from '@/components/features/compose-message-modal'
+import ComposeMessageModal from '@/components/features/compose-message-modal'
+import EnhancedDataModal from '@/components/features/enhanced-data-modal'
+import { OnboardingBanner } from '@/components/layout/onboarding-banner'
 
 interface InboxItem {
   id: string
@@ -63,6 +67,19 @@ interface InboxItem {
   receivedAt: string
   sourceIp?: string
   userAgent?: string
+  // Enhanced data fields
+  enriched_data?: any
+  sender_info?: any
+  data_quality_score?: number
+  business_context?: string
+  key_fields?: string[]
+  sensitive_data?: boolean
+  user_notes?: string
+  user_category?: string
+  auto_tags?: string[]
+  processed_at?: string
+  content_type?: string
+  data_size?: number
 }
 
 // Seeded data for bremercole@gmail.com
@@ -204,7 +221,7 @@ const seededInboxItems: InboxItem[] = [
 ]
 
 export default function InboxPage() {
-  const [username, setUsername] = useState('bremercole')
+  const [username, setUsername] = useState('')
   const [inboxUrl, setInboxUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [qrCode, setQrCode] = useState('')
@@ -215,6 +232,7 @@ export default function InboxPage() {
   const [showCompose, setShowCompose] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<InboxItem | null>(null)
   const [inboxItems, setInboxItems] = useState<InboxItem[]>(seededInboxItems)
+  const [loading, setLoading] = useState(true)
 
   // Configuration state
   const [config, setConfig] = useState({
@@ -228,15 +246,68 @@ export default function InboxPage() {
   })
 
   useEffect(() => {
-    const url = typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/v1/${username}`
-      : `https://api.enostics.com/v1/${username}`
-    setInboxUrl(url)
-    generateQRCode(url)
-    
-    // Fetch real inbox data
-    fetchInboxData()
+    fetchUserInfo()
+  }, [])
+
+  useEffect(() => {
+    if (username) {
+      const url = typeof window !== 'undefined' 
+        ? `${window.location.origin}/api/v1/${username}`
+        : `https://api.enostics.com/v1/${username}`
+      setInboxUrl(url)
+      generateQRCode(url)
+      
+      // Fetch real inbox data
+      fetchInboxData()
+    }
   }, [username])
+
+  const fetchUserInfo = async () => {
+    try {
+      const supabase = createClientSupabaseClient()
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      // Get user profile and endpoint
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, display_name')
+        .eq('id', user.id)
+        .single()
+
+      const { data: endpoint } = await supabase
+        .from('endpoints')
+        .select('url_path')
+        .eq('user_id', user.id)
+        .single()
+
+      if (endpoint?.url_path) {
+        setUsername(endpoint.url_path)
+      } else if (profile?.username) {
+        setUsername(profile.username)
+      } else {
+        // Fallback to email username
+        const emailUsername = user.email?.split('@')[0] || 'user'
+        setUsername(emailUsername)
+      }
+    } catch (error) {
+      console.error('Error fetching user info:', error)
+      // Fallback to email username if available
+      const supabase = createClientSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.email) {
+        const emailUsername = user.email.split('@')[0]
+        setUsername(emailUsername)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const generateQRCode = async (url: string) => {
     try {
@@ -323,19 +394,32 @@ export default function InboxPage() {
         // Transform API data to component format
         const transformedItems = data.data.map((item: any) => ({
           id: item.id,
-          sender: item.sender || extractSenderFromPayload(item.payload),
+          sender: item.sender || extractSenderFromPayload(item.data),
           source: item.source || 'unknown',
           type: item.type || item.payload_type || 'unknown',
-          subject: generateSubjectFromPayload(item.payload),
-          preview: generatePreviewFromPayload(item.payload),
-          timestamp: formatTimestamp(item.created_at),
-          receivedAt: item.created_at,
+          subject: generateSubjectFromPayload(item.data),
+          preview: generatePreviewFromPayload(item.data),
+          timestamp: formatTimestamp(item.processed_at),
+          receivedAt: item.processed_at,
           isRead: item.is_read || false,
           isStarred: item.is_starred || false,
           sourceIcon: getSourceIcon(item.source || item.payload_source),
           sourceIp: item.source_ip,
           userAgent: item.user_agent,
-          data: item.payload
+          data: item.data,
+          // Enhanced data fields
+          enriched_data: item.enriched_data,
+          sender_info: item.sender_info,
+          data_quality_score: item.data_quality_score,
+          business_context: item.business_context,
+          key_fields: item.key_fields,
+          sensitive_data: item.sensitive_data,
+          user_notes: item.user_notes,
+          user_category: item.user_category,
+          auto_tags: item.auto_tags,
+          processed_at: item.processed_at,
+          content_type: item.content_type,
+          data_size: item.data_size
         }))
         
         setInboxItems(transformedItems)
@@ -404,221 +488,234 @@ export default function InboxPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Top Bar - Endpoint & QR Code */}
-      <div className="border-b border-enostics-gray-800 pb-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Your Personal Inbox
-            </h1>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-enostics-gray-900 rounded-lg px-3 py-2">
-                <Globe className="h-4 w-4 text-enostics-blue" />
-                <code className="text-sm text-enostics-gray-300 font-mono">
-                  {inboxUrl}
-                </code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  className="h-6 w-6 p-0 hover:bg-enostics-gray-800"
-                >
-                  {copied ? (
-                    <Check className="h-3 w-3 text-green-400" />
-                  ) : (
-                    <Copy className="h-3 w-3 text-enostics-gray-400" />
-                  )}
-                </Button>
-              </div>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <QrCode className="h-4 w-4 mr-2" />
-                    QR Code
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Inbox QR Code</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col items-center space-y-4 py-4">
-                    {qrCode && (
-                      <img src={qrCode} alt="Inbox QR Code" className="rounded-lg" />
-                    )}
-                    <p className="text-sm text-enostics-gray-400 text-center">
-                      Scan this code to quickly access your inbox endpoint
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
+      {/* Onboarding Banner */}
+      <OnboardingBanner />
+      
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-enostics-gray-800 pb-4 mb-6 px-6 pt-6">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            {/* Intelligence Modal */}
-            <Dialog open={showIntelligence} onOpenChange={setShowIntelligence}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Brain className="h-4 w-4 text-purple-400" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-purple-400" />
-                    Inbox Intelligence
-                    <Badge variant="outline" className="text-xs">
-                      Coming Soon
-                    </Badge>
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-6 py-4">
-                  <div className="text-sm text-enostics-gray-400">
-                    Your personal, private AI assistant will help analyze and categorize incoming data.
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card variant="glass">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Data Types</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-red-400">Health Data</span>
-                            <span>40%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-green-400">Sensor Data</span>
-                            <span>25%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-yellow-400">Financial</span>
-                            <span>20%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-purple-400">Messages</span>
-                            <span>15%</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card variant="glass">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Sources</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span>IoT Devices</span>
-                            <span>45%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Webhooks</span>
-                            <span>30%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>AI Agents</span>
-                            <span>15%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>API Clients</span>
-                            <span>10%</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="bg-enostics-gray-900 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Shield className="h-4 w-4 text-green-400" />
-                      <span className="text-sm font-medium text-white">Privacy First</span>
-                    </div>
-                    <p className="text-xs text-enostics-gray-400">
-                      All intelligence processing happens locally on your device. Your data never leaves your control.
-                    </p>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Settings Modal */}
-            <Dialog open={showSettings} onOpenChange={setShowSettings}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Inbox Settings</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-6 py-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="public">Public Access</Label>
-                      <Switch
-                        id="public"
-                        checked={config.isPublic}
-                        onCheckedChange={(checked) =>
-                          setConfig(prev => ({ ...prev, isPublic: checked }))
-                        }
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="api-key">Require API Key</Label>
-                      <Switch
-                        id="api-key"
-                        checked={config.requiresApiKey}
-                        onCheckedChange={(checked) =>
-                          setConfig(prev => ({ ...prev, requiresApiKey: checked }))
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="rate-limit">Rate Limit (per hour)</Label>
-                      <Input
-                        id="rate-limit"
-                        type="number"
-                        value={config.rateLimitPerHour}
-                        onChange={(e) =>
-                          setConfig(prev => ({ ...prev, rateLimitPerHour: parseInt(e.target.value) }))
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="webhook-url">Webhook URL (optional)</Label>
-                      <Input
-                        id="webhook-url"
-                        placeholder="https://your-webhook-url.com"
-                        value={config.webhookUrl}
-                        onChange={(e) =>
-                          setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button onClick={() => setShowSettings(false)}>
-                      Save Settings
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Inbox className="h-6 w-6 text-enostics-purple" />
+            <h1 className="text-2xl font-bold text-white">Inbox</h1>
           </div>
+
+          {/* API URL Dropdown */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Link className="h-4 w-4 mr-2" />
+                API URL
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Your Inbox Endpoint</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="flex items-center gap-2 bg-enostics-gray-900 rounded-lg px-3 py-2">
+                  <Globe className="h-4 w-4 text-enostics-blue" />
+                  <code className="text-sm text-enostics-gray-300 font-mono flex-1">
+                    {inboxUrl}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    className="h-6 w-6 p-0 hover:bg-enostics-gray-800"
+                  >
+                    {copied ? (
+                      <Check className="h-3 w-3 text-green-400" />
+                    ) : (
+                      <Copy className="h-3 w-3 text-enostics-gray-400" />
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="text-center">
+                  {qrCode && (
+                    <img src={qrCode} alt="Inbox QR Code" className="rounded-lg mx-auto" />
+                  )}
+                  <p className="text-sm text-enostics-gray-400 mt-2">
+                    QR code for quick access
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <Button variant="outline" size="sm">
+            <Search className="h-4 w-4" />
+          </Button>
+
+          {/* Compose */}
+          <Button 
+            size="sm"
+            onClick={() => setShowCompose(true)}
+            className="bg-enostics-purple hover:bg-enostics-purple/80"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Compose
+          </Button>
+
+          {/* Intelligence Modal */}
+          <Dialog open={showIntelligence} onOpenChange={setShowIntelligence}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Brain className="h-4 w-4 text-purple-400" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-purple-400" />
+                  Intelligence Overview
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card variant="glass">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Data Sources</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Health Devices</span>
+                          <span>45%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Manual Entry</span>
+                          <span>30%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Third Party</span>
+                          <span>15%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>API Clients</span>
+                          <span>10%</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card variant="glass">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Processing Stats</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Messages Today</span>
+                          <span className="text-green-400">{inboxItems.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Avg Response Time</span>
+                          <span className="text-blue-400">120ms</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Success Rate</span>
+                          <span className="text-green-400">99.8%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Storage Used</span>
+                          <span className="text-orange-400">2.4MB</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="bg-enostics-gray-900 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="h-4 w-4 text-green-400" />
+                    <span className="text-sm font-medium text-white">Privacy First</span>
+                  </div>
+                  <p className="text-xs text-enostics-gray-400">
+                    All intelligence processing happens locally on your device. Your data never leaves your control.
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Settings Modal */}
+          <Dialog open={showSettings} onOpenChange={setShowSettings}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Inbox Settings</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="public">Public Access</Label>
+                    <Switch
+                      id="public"
+                      checked={config.isPublic}
+                      onCheckedChange={(checked) =>
+                        setConfig(prev => ({ ...prev, isPublic: checked }))
+                      }
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="api-key">Require API Key</Label>
+                    <Switch
+                      id="api-key"
+                      checked={config.requiresApiKey}
+                      onCheckedChange={(checked) =>
+                        setConfig(prev => ({ ...prev, requiresApiKey: checked }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="rate-limit">Rate Limit (per hour)</Label>
+                    <Input
+                      id="rate-limit"
+                      type="number"
+                      value={config.rateLimitPerHour}
+                      onChange={(e) =>
+                        setConfig(prev => ({ ...prev, rateLimitPerHour: parseInt(e.target.value) }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="webhook-url">Webhook URL (optional)</Label>
+                    <Input
+                      id="webhook-url"
+                      placeholder="https://your-webhook-url.com"
+                      value={config.webhookUrl}
+                      onChange={(e) =>
+                        setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button onClick={() => setShowSettings(false)}>
+                    Save Settings
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       {/* Gmail-style Inbox */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col px-6">
         {/* Inbox Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
@@ -626,54 +723,13 @@ export default function InboxPage() {
               <Mail className="h-5 w-5" />
               Inbox ({unreadCount})
             </h2>
-          <Badge variant="outline" className="text-xs">
-            <Activity className="h-3 w-3 mr-1" />
-            Live
-          </Badge>
+            <Badge variant="outline" className="text-xs">
+              <Activity className="h-3 w-3 mr-1" />
+              Live
+            </Badge>
             <Badge variant="outline" className="text-xs text-orange-400">
               Seeded Data
             </Badge>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-enostics-gray-400" />
-              <Input
-                placeholder="Search inbox..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64"
-              />
-            </div>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Inbox Toolbar */}
-        <div className="flex items-center justify-between border-b border-enostics-gray-800 pb-4 mb-4">
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={() => setShowCompose(true)}
-              className="bg-enostics-blue hover:bg-enostics-blue/80 text-white"
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Compose
-            </Button>
-            <Button variant="outline" size="sm">
-              <Archive className="h-4 w-4 mr-2" />
-              Archive
-            </Button>
-            <Button variant="outline" size="sm">
-              <Star className="h-4 w-4 mr-2" />
-              Starred ({starredCount})
-            </Button>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
           </div>
           
           <div className="text-sm text-enostics-gray-400">
@@ -682,7 +738,7 @@ export default function InboxPage() {
         </div>
 
         {/* Inbox Items */}
-        <div className="space-y-1 flex-1 overflow-y-auto">
+        <div className="space-y-1 flex-1 overflow-y-auto pb-6">
           {filteredItems.map((item) => (
             <div
               key={item.id}
@@ -729,7 +785,7 @@ export default function InboxPage() {
                   <div className="text-xs text-enostics-gray-500 truncate">
                     {item.preview}
                   </div>
-      </div>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-enostics-gray-400 whitespace-nowrap">
@@ -749,173 +805,62 @@ export default function InboxPage() {
         </div>
       </div>
 
-      {/* Event Detail Modal */}
-      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          {selectedEvent && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-2 text-sm text-enostics-gray-400 mb-2">
-                  <Home className="h-4 w-4" />
-                  <ChevronRight className="h-4 w-4" />
-                  <span>Inbox</span>
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="text-white">{selectedEvent.subject}</span>
-                </div>
-                <DialogTitle className="flex items-center gap-3">
-                  {selectedEvent.sourceIcon}
-                  <span>{selectedEvent.subject}</span>
-                  <Badge variant="outline" className={`text-xs ${getTypeColor(selectedEvent.type)}`}>
-                    {selectedEvent.type.replace('_', ' ')}
-                  </Badge>
-                </DialogTitle>
-              </DialogHeader>
+      {/* Enhanced Data Modal */}
+      <EnhancedDataModal
+        isOpen={!!selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        record={selectedEvent ? {
+          id: selectedEvent.id,
+          data: selectedEvent.data,
+          processed_at: selectedEvent.processed_at || selectedEvent.receivedAt,
+          source_ip: selectedEvent.sourceIp,
+          user_agent: selectedEvent.userAgent,
+          content_type: selectedEvent.content_type,
+          data_size: selectedEvent.data_size || JSON.stringify(selectedEvent.data).length,
+          enriched_data: selectedEvent.enriched_data,
+          sender_info: selectedEvent.sender_info,
+          data_quality_score: selectedEvent.data_quality_score,
+          business_context: selectedEvent.business_context,
+          key_fields: selectedEvent.key_fields,
+          sensitive_data: selectedEvent.sensitive_data,
+          user_notes: selectedEvent.user_notes,
+          user_category: selectedEvent.user_category,
+          auto_tags: selectedEvent.auto_tags
+        } : null}
+        onUpdate={async (updates) => {
+          if (!selectedEvent) return
+          
+          try {
+            const response = await fetch(`/api/inbox/update/${selectedEvent.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updates)
+            })
+            
+            if (response.ok) {
+              // Update local state
+              setInboxItems(prev => 
+                prev.map(item => 
+                  item.id === selectedEvent.id 
+                    ? { ...item, ...updates }
+                    : item
+                )
+              )
               
-              <div className="space-y-6 py-4">
-                {/* Event Header */}
-                <div className="bg-enostics-gray-900 rounded-lg p-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-enostics-gray-400" />
-                        <span className="font-medium">Sender:</span>
-                        <span>{selectedEvent.sender}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-enostics-gray-400" />
-                        <span className="font-medium">Received:</span>
-                        <span>{new Date(selectedEvent.receivedAt).toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4 text-enostics-gray-400" />
-                        <span className="font-medium">Source IP:</span>
-                        <span className="font-mono text-xs">{selectedEvent.sourceIp}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Database className="h-4 w-4 text-enostics-gray-400" />
-                        <span className="font-medium">Source:</span>
-                        <span>{selectedEvent.source.replace('_', ' ')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-enostics-gray-400" />
-                        <span className="font-medium">User Agent:</span>
-                        <span className="font-mono text-xs truncate">{selectedEvent.userAgent}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ExternalLink className="h-4 w-4 text-enostics-gray-400" />
-                        <span className="font-medium">Event ID:</span>
-                        <span className="font-mono text-xs">{selectedEvent.id}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Data Payload */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Data Payload
-                  </h3>
-                  <div className="bg-enostics-gray-950 rounded-lg p-4">
-                    <pre className="text-sm text-enostics-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                      {JSON.stringify(selectedEvent.data, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-
-                {/* Analysis Template */}
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-purple-400" />
-                    Analysis Template
-                    <Badge variant="outline" className="text-xs">
-                      Coming Soon
-                    </Badge>
-                  </h3>
-                  <div className="bg-enostics-gray-900 rounded-lg p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card variant="glass">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Data Quality</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Completeness</span>
-                              <span className="text-green-400">95%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Accuracy</span>
-                              <span className="text-green-400">98%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Timeliness</span>
-                              <span className="text-yellow-400">85%</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card variant="glass">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Insights</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2 text-sm">
-                            <div className="text-enostics-gray-400">
-                              • Pattern detected in timestamps
-                            </div>
-                            <div className="text-enostics-gray-400">
-                              • Data correlates with previous entries
-                            </div>
-                            <div className="text-enostics-gray-400">
-                              • Source reliability: High
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card variant="glass">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <Button variant="outline" size="sm" className="w-full text-xs">
-                              Create Automation
-                            </Button>
-                            <Button variant="outline" size="sm" className="w-full text-xs">
-                              Set Alert
-                            </Button>
-                            <Button variant="outline" size="sm" className="w-full text-xs">
-                              Export Data
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    <div className="bg-enostics-gray-800 rounded-lg p-3">
-                      <p className="text-xs text-enostics-gray-400">
-                        <Shield className="h-3 w-3 inline mr-1" />
-                        This analysis will be performed locally by your personal AI assistant. No data is sent to external services.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+              // Update selected event
+              setSelectedEvent(prev => prev ? { ...prev, ...updates } : null)
+            }
+          } catch (error) {
+            console.error('Error updating record:', error)
+          }
+        }}
+      />
 
       {/* Compose Message Modal */}
       <ComposeMessageModal
         isOpen={showCompose}
         onClose={() => setShowCompose(false)}
-        onSend={(message) => {
+        onSent={(result) => {
           // Optionally refresh inbox after sending
           fetchInboxData()
         }}

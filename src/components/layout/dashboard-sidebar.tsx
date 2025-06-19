@@ -23,25 +23,28 @@ import {
   FileText,
   Lock,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  MessageCircle
 } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { UpgradeModal } from '@/components/features/upgrade-modal'
-import { ComposeMessageModal } from '@/components/features/compose-message-modal'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
-// Updated navigation with subscription-based structure and sub-pages
+// Simplified navigation - all features available to everyone
 const navigation = [
-  { name: 'Inbox', href: '/dashboard', icon: Mail, description: 'Your universal personal inbox for receiving data', tier: 'free' },
-  { name: 'Business', href: '/dashboard/business', icon: Home, description: 'Multi-endpoint management and business features', tier: 'business' },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, description: 'Real-time monitoring and performance metrics', tier: 'business', isSubPage: true },
-  { name: 'Webhooks', href: '/dashboard/webhooks', icon: Webhook, description: 'Forward requests to external URLs', tier: 'business', isSubPage: true },
-  { name: 'API Keys', href: '/dashboard/keys', icon: Key, description: 'Manage authentication keys', tier: 'business', isSubPage: true },
-  { name: 'Data', href: '/dashboard/data', icon: Database, description: 'View and manage your data', tier: 'business', isSubPage: true },
-  { name: 'Playground', href: '/dashboard/playground', icon: Play, description: 'Test endpoints with custom payloads', tier: 'free' },
-  { name: 'Profile', href: '/dashboard/profile', icon: User, description: 'Personal information and settings', tier: 'free' },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings, description: 'Account and system settings', tier: 'free' },
+  { name: 'Inbox', href: '/dashboard', icon: Mail, description: 'Your universal personal inbox for receiving data' },
+  { name: 'Chat', href: '/dashboard/chat', icon: MessageCircle, description: 'Chat with your local AI models', badge: 'AI' },
+  { name: 'Business', href: '/dashboard/business', icon: Home, description: 'Multi-endpoint management and business features' },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, description: 'Real-time monitoring and performance metrics' },
+  { name: 'Webhooks', href: '/dashboard/webhooks', icon: Webhook, description: 'Forward requests to external URLs' },
+  { name: 'API Keys', href: '/dashboard/keys', icon: Key, description: 'Manage authentication keys' },
+  { name: 'Data', href: '/dashboard/data', icon: Database, description: 'View and manage your data' },
+  { name: 'Playground', href: '/dashboard/playground', icon: Play, description: 'Test endpoints with custom payloads' },
+  { name: 'Profile', href: '/dashboard/profile', icon: User, description: 'Personal information and settings' },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings, description: 'Account and system settings' },
 ]
 
 interface DashboardSidebarProps {
@@ -56,9 +59,8 @@ export function DashboardSidebar({ className = '', mobileMenuOpen = false, onClo
   const [loading, setLoading] = useState(true)
   const [userTier, setUserTier] = useState<'free' | 'developer' | 'business'>('free')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [showComposeModal, setShowComposeModal] = useState(false)
   const [upgradeFeature, setUpgradeFeature] = useState<string>('')
-  const [businessExpanded, setBusinessExpanded] = useState(false)
+
   const [stats, setStats] = useState({
     endpoints: 0,
     apiKeys: 0,
@@ -175,12 +177,9 @@ export function DashboardSidebar({ className = '', mobileMenuOpen = false, onClo
   const isOpen = mobileMenuOpen !== undefined ? mobileMenuOpen : sidebarOpen
 
   const getNavItemBadge = (item: any) => {
-    // Show lock icon for business features if user is on free tier
-    if (item.tier === 'business' && userTier === 'free') {
-      return 'LOCK'
-    }
-    
     switch (item.name) {
+      case 'Chat':
+        return item.badge || undefined
       case 'Business':
         return stats.endpoints > 0 ? stats.endpoints : undefined
       case 'API Keys':
@@ -194,11 +193,6 @@ export function DashboardSidebar({ className = '', mobileMenuOpen = false, onClo
   }
 
   const isNavItemDisabled = (item: any) => {
-    // Business tier features require subscription (developer tier gets some access)
-    if (item.tier === 'business' && userTier === 'free') {
-      return true
-    }
-    
     // Some features require at least one endpoint
     switch (item.name) {
       case 'Analytics':
@@ -211,58 +205,36 @@ export function DashboardSidebar({ className = '', mobileMenuOpen = false, onClo
 
   return (
     <>
-      {/* Mobile menu button - shows when sidebar is closed */}
-      <button
-        onClick={() => {
-          setSidebarOpen(true)
-          onClose?.()
-        }}
-        className={clsx(
-          "fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-enostics-gray-900 border border-enostics-gray-700 text-white transition-transform duration-300",
-          isOpen ? "-translate-x-full opacity-0" : "translate-x-0 opacity-100"
-        )}
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-
-      {/* Mobile sidebar backdrop */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={handleClose}
-        />
-      )}
-
       {/* Mobile sidebar */}
       <div className={clsx(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-enostics-gray-950 border-r border-enostics-gray-800 transform lg:hidden transition-transform duration-300 ease-in-out",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        'fixed inset-0 flex z-50 lg:hidden',
+        isOpen ? 'block' : 'hidden'
       )}>
-        <SidebarContent 
-          user={user} 
-          pathname={pathname} 
-          onSignOut={handleSignOut}
-          onClose={handleClose}
-          loading={loading}
-          navigation={navigation}
-          getNavItemBadge={getNavItemBadge}
-          isNavItemDisabled={isNavItemDisabled}
-          userTier={userTier}
-          onShowUpgrade={(feature) => {
-            setUpgradeFeature(feature)
-            setShowUpgradeModal(true)
-          }}
-          onShowCompose={() => setShowComposeModal(true)}
-          businessExpanded={businessExpanded}
-          onToggleBusiness={() => setBusinessExpanded(!businessExpanded)}
-        />
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={handleClose} />
+        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-enostics-gray-900 dark:bg-gray-900">
+          <SidebarContent
+            user={user}
+            pathname={pathname}
+            onSignOut={handleSignOut}
+            onClose={handleClose}
+            loading={loading}
+            navigation={navigation}
+            getNavItemBadge={getNavItemBadge}
+            isNavItemDisabled={isNavItemDisabled}
+            userTier={userTier}
+            onShowUpgrade={(feature) => {
+              setUpgradeFeature(feature)
+              setShowUpgradeModal(true)
+            }}
+          />
+        </div>
       </div>
 
       {/* Desktop sidebar */}
-      <div className="fixed left-0 top-0 bottom-0 w-64 bg-enostics-gray-950 border-r border-enostics-gray-800 z-40 lg:block hidden">
-        <SidebarContent 
-          user={user} 
-          pathname={pathname} 
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
+        <SidebarContent
+          user={user}
+          pathname={pathname}
           onSignOut={handleSignOut}
           loading={loading}
           navigation={navigation}
@@ -273,9 +245,6 @@ export function DashboardSidebar({ className = '', mobileMenuOpen = false, onClo
             setUpgradeFeature(feature)
             setShowUpgradeModal(true)
           }}
-          onShowCompose={() => setShowComposeModal(true)}
-          businessExpanded={businessExpanded}
-          onToggleBusiness={() => setBusinessExpanded(!businessExpanded)}
         />
       </div>
 
@@ -284,13 +253,6 @@ export function DashboardSidebar({ className = '', mobileMenuOpen = false, onClo
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         feature={upgradeFeature}
-      />
-      
-      <ComposeMessageModal
-        isOpen={showComposeModal}
-        onClose={() => setShowComposeModal(false)}
-        userTier={userTier}
-        currentUser={user}
       />
     </>
   )
@@ -307,9 +269,6 @@ interface SidebarContentProps {
   isNavItemDisabled: (item: any) => boolean
   userTier: 'free' | 'developer' | 'business'
   onShowUpgrade: (feature: string) => void
-  onShowCompose: () => void
-  businessExpanded: boolean
-  onToggleBusiness: () => void
 }
 
 function SidebarContent({ 
@@ -322,51 +281,45 @@ function SidebarContent({
   getNavItemBadge,
   isNavItemDisabled,
   userTier,
-  onShowUpgrade,
-  onShowCompose,
-  businessExpanded,
-  onToggleBusiness
+  onShowUpgrade
 }: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header - Fixed at top */}
-      <div className="flex items-center justify-between p-6 pt-6 border-b border-enostics-gray-800">
+      <div className="flex items-center justify-between p-6 pt-6 border-b border-enostics-gray-800 dark:border-gray-800 light:border-gray-200">
         <div className="flex items-center">
           <Link href="/dashboard" onClick={onClose}>
-            <h1 className="text-xl font-bold text-white hover:text-enostics-blue transition-colors">
+            <h1 className="text-xl font-bold text-white dark:text-white light:text-gray-900 hover:text-enostics-blue transition-colors">
               enostics
             </h1>
           </Link>
         </div>
-        {onClose && (
-          <button
-            type="button"
-            className="text-enostics-gray-400 hover:text-white lg:hidden"
-            onClick={onClose}
-          >
-            <X className="h-6 w-6" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {onClose && (
+            <button
+              type="button"
+              className="text-enostics-gray-400 hover:text-white lg:hidden dark:text-gray-400 dark:hover:text-white light:text-gray-600 light:hover:text-gray-900"
+              onClick={onClose}
+            >
+              <X className="h-6 w-6" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Quick action */}
-      <div className="p-6 pb-4">
+      {/* Quick actions */}
+      <div className="p-6 pb-4 space-y-2">
         <Button 
-          className="w-full justify-start gap-2" 
+          variant="outline"
+          className="w-full justify-start gap-2 border-enostics-blue text-enostics-blue hover:bg-enostics-blue hover:text-white" 
           onClick={() => {
-            if (userTier === 'free') {
-              onShowUpgrade('Compose Message')
-            } else {
-              onShowCompose()
-            }
+            onShowUpgrade('Premium Features')
             onClose?.()
           }}
         >
-          <Plus className="h-4 w-4" />
-          Compose Message
-          {userTier === 'free' && (
-            <Lock className="h-4 w-4 opacity-70 ml-auto" />
-          )}
+          <Sparkles className="h-4 w-4" />
+          Upgrade
         </Button>
       </div>
 
@@ -381,136 +334,56 @@ function SidebarContent({
             const badge = getNavItemBadge(item)
             const disabled = isNavItemDisabled(item)
             
-            // Hide sub-pages when business section is collapsed
-            if (item.isSubPage && !businessExpanded) {
-              return null
-            }
-            
             return (
               <li key={item.name}>
-                {item.name === 'Business' ? (
-                  // Special handling for Business section with expand/collapse
-                  <button
-                    onClick={() => {
-                      if (disabled) {
-                        onShowUpgrade(item.name)
-                      } else {
-                        onToggleBusiness()
-                      }
-                    }}
+                <Link
+                  href={disabled ? '#' : item.href}
+                  onClick={(e) => {
+                    if (disabled) {
+                      e.preventDefault()
+                      onShowUpgrade(item.name)
+                      return
+                    }
+                    onClose?.()
+                  }}
+                  className={clsx(
+                    'group flex gap-x-3 rounded-md p-3 text-sm font-medium transition-all duration-200 relative',
+                    isActive
+                      ? 'bg-white/10 dark:bg-white/10 light:bg-gray-100 text-white dark:text-white light:text-gray-900 shadow-lg'
+                      : disabled
+                      ? 'text-enostics-gray-600 dark:text-gray-600 light:text-gray-400 cursor-not-allowed'
+                      : 'text-enostics-gray-300 dark:text-gray-300 light:text-gray-600 hover:text-white dark:hover:text-white light:hover:text-gray-900 hover:bg-enostics-gray-800 dark:hover:bg-gray-800 light:hover:bg-gray-100'
+                  )}
+                  title={disabled ? `${item.description} (Create an endpoint first)` : item.description}
+                >
+                  <item.icon
                     className={clsx(
-                      'group flex gap-x-3 rounded-md p-3 text-sm font-medium transition-all duration-200 relative w-full',
+                      'h-5 w-5 shrink-0 transition-colors',
                       isActive
-                        ? 'bg-enostics-blue text-white shadow-lg'
+                        ? 'text-white dark:text-white light:text-gray-900'
                         : disabled
-                        ? 'text-enostics-gray-600 cursor-not-allowed'
-                        : 'text-enostics-gray-300 hover:text-white hover:bg-enostics-gray-800'
+                        ? 'text-enostics-gray-600 dark:text-gray-600 light:text-gray-400'
+                        : 'text-enostics-gray-400 dark:text-gray-400 light:text-gray-500 group-hover:text-white dark:group-hover:text-white light:group-hover:text-gray-900'
                     )}
-                    title={disabled ? `${item.description} (Upgrade to Business Plan)` : item.description}
-                  >
-                    <item.icon
+                  />
+                  <span className="flex-1">{item.name}</span>
+                  {badge && (typeof badge === 'string' || badge > 0) && (
+                    <Badge 
+                      variant={isActive ? "secondary" : "outline"} 
                       className={clsx(
-                        'h-5 w-5 shrink-0 transition-colors',
-                        isActive
-                          ? 'text-white'
-                          : disabled
-                          ? 'text-enostics-gray-600'
-                          : 'text-enostics-gray-400 group-hover:text-white'
+                        "text-xs px-2 py-0.5",
+                        isActive 
+                          ? "bg-white/20 text-white border-white/30" 
+                          : "bg-enostics-gray-700 text-enostics-gray-300 border-enostics-gray-600"
                       )}
-                    />
-                    <span className="flex-1 text-left">{item.name}</span>
-                    {badge && (typeof badge === 'string' || badge > 0) && (
-                      <>
-                        {badge === 'LOCK' ? (
-                          <Lock className="h-3 w-3 text-enostics-gray-500" />
-                        ) : (
-                          <Badge 
-                            variant={isActive ? "secondary" : "outline"} 
-                            className={clsx(
-                              "text-xs px-2 py-0.5 mr-2",
-                              isActive 
-                                ? "bg-white/20 text-white border-white/30" 
-                                : "bg-enostics-gray-700 text-enostics-gray-300 border-enostics-gray-600"
-                            )}
-                          >
-                            {typeof badge === 'number' && badge > 99 ? '99+' : badge}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                    {!disabled && (
-                      businessExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-enostics-gray-400" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-enostics-gray-400" />
-                      )
-                    )}
-                    {disabled && (
-                      <div className="absolute inset-0 bg-enostics-gray-900/50 rounded-md" />
-                    )}
-                  </button>
-                ) : (
-                  // Regular navigation items
-                  <Link
-                    href={disabled ? '#' : item.href}
-                    onClick={(e) => {
-                      if (disabled) {
-                        e.preventDefault()
-                        onShowUpgrade(item.name)
-                        return
-                      }
-                      onClose?.()
-                    }}
-                    className={clsx(
-                      'group flex gap-x-3 rounded-md p-3 text-sm font-medium transition-all duration-200 relative',
-                      item.isSubPage && 'ml-6 pl-6 border-l border-enostics-gray-700',
-                      isActive
-                        ? 'bg-enostics-blue text-white shadow-lg'
-                        : disabled
-                        ? 'text-enostics-gray-600 cursor-not-allowed'
-                        : 'text-enostics-gray-300 hover:text-white hover:bg-enostics-gray-800'
-                    )}
-                    title={disabled ? `${item.description} (Upgrade to Business Plan)` : item.description}
-                  >
-                    <item.icon
-                      className={clsx(
-                        item.isSubPage ? 'h-4 w-4' : 'h-5 w-5',
-                        'shrink-0 transition-colors',
-                        isActive
-                          ? 'text-white'
-                          : disabled
-                          ? 'text-enostics-gray-600'
-                          : 'text-enostics-gray-400 group-hover:text-white'
-                      )}
-                    />
-                    <span className={clsx(
-                      "flex-1",
-                      item.isSubPage && "text-sm"
-                    )}>{item.name}</span>
-                    {badge && (typeof badge === 'string' || badge > 0) && (
-                      <>
-                        {badge === 'LOCK' ? (
-                          <Lock className="h-3 w-3 text-enostics-gray-500" />
-                        ) : (
-                          <Badge 
-                            variant={isActive ? "secondary" : "outline"} 
-                            className={clsx(
-                              "text-xs px-2 py-0.5",
-                              isActive 
-                                ? "bg-white/20 text-white border-white/30" 
-                                : "bg-enostics-gray-700 text-enostics-gray-300 border-enostics-gray-600"
-                            )}
-                          >
-                            {typeof badge === 'number' && badge > 99 ? '99+' : badge}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                    {disabled && (
-                      <div className="absolute inset-0 bg-enostics-gray-900/50 rounded-md" />
-                    )}
-                  </Link>
-                )}
+                    >
+                      {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+                    </Badge>
+                  )}
+                  {disabled && (
+                    <div className="absolute inset-0 bg-enostics-gray-900/50 rounded-md" />
+                  )}
+                </Link>
               </li>
             )
           })}
@@ -518,7 +391,7 @@ function SidebarContent({
       </nav>
 
       {/* User section - Fixed at bottom */}
-      <div className="border-t border-enostics-gray-800 p-6">
+      <div className="border-t border-enostics-gray-800 dark:border-gray-800 light:border-gray-200 p-6">
         {loading ? (
           <div className="animate-pulse">
             <div className="h-10 bg-enostics-gray-700 rounded mb-2"></div>
@@ -531,10 +404,10 @@ function SidebarContent({
                 {user.email?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-medium truncate">
+                <p className="text-white dark:text-white light:text-gray-900 font-medium truncate">
                   {user.email}
                 </p>
-                <p className="text-enostics-gray-400 text-xs">
+                <p className="text-enostics-gray-400 dark:text-gray-400 light:text-gray-500 text-xs">
                   Active user
                 </p>
               </div>

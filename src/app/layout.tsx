@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LayoutWrapper } from "@/components/layout/layout-wrapper";
 
 export const metadata: Metadata = {
   title: "enostics - Your Personal Health Data Port",
@@ -21,9 +22,48 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const savedTheme = localStorage.getItem('mode') || 'dark';
+                  const root = document.documentElement;
+                  const body = document.body;
+                  
+                  if (root && root.classList) {
+                    root.classList.remove('dark', 'light');
+                    if (savedTheme === 'dark') {
+                      root.classList.add('dark');
+                      root.style.colorScheme = 'dark';
+                    } else {
+                      root.classList.add('light');
+                      root.style.colorScheme = 'light';
+                    }
+                  }
+                  
+                  if (body && body.classList) {
+                    body.classList.remove('dark', 'light');
+                    if (savedTheme === 'dark') {
+                      body.classList.add('dark');
+                    } else {
+                      body.classList.add('light');
+                    }
+                  }
+                } catch (e) {
+                  console.warn('Theme initialization error:', e);
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="antialiased min-h-screen">
         <div className="min-h-full">
-          {children}
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
         </div>
       </body>
     </html>

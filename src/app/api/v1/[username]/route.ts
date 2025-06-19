@@ -9,6 +9,7 @@ import {
 } from '@/lib/public-inbox-simple'
 import { validateApiKey } from '@/lib/api-keys'
 import { classifyPayload } from '@/lib/universal-classification'
+import { enrichPayload } from '@/lib/enhanced-payload-enrichment'
 
 export async function POST(
   request: NextRequest,
@@ -42,28 +43,30 @@ export async function POST(
     // Sanitize payload
     payload = sanitizePayload(payload)
     
-    // Get user by username
+    // Get user by endpoint URL path
     const supabase = getSupabaseAdmin()
     
-    // First, get user from user_profiles table
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('user_id, full_name')
-      .eq('full_name', username) // Assuming username is stored in full_name
+    // Find the endpoint by URL path and get the user
+    const { data: endpoint, error: endpointError } = await supabase
+      .from('endpoints')
+      .select('user_id, id, name, is_active')
+      .eq('url_path', username)
+      .eq('is_active', true)
       .single()
     
-    if (profileError || !profile) {
+    if (endpointError || !endpoint) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Endpoint not found' },
         { status: 404 }
       )
     }
     
-    const userId = profile.user_id
+    const userId = endpoint.user_id
+    const endpointId = endpoint.id
     
     // Get user's inbox configuration
     const { data: config } = await supabase
-      .from('enostics_public_inbox_config')
+      .from('inbox_config')
       .select('*')
       .eq('user_id', userId)
       .single()
@@ -71,7 +74,7 @@ export async function POST(
     // Create default config if none exists
     if (!config) {
       await supabase
-        .from('enostics_public_inbox_config')
+        .from('inbox_config')
         .insert({
           user_id: userId,
           is_public: true,
@@ -92,13 +95,8 @@ export async function POST(
       allowed_sources: []
     }
     
-    // Check if inbox is public
-    if (!inboxConfig.is_public) {
-      return NextResponse.json(
-        { error: 'This inbox is private' },
-        { status: 403 }
-      )
-    }
+    // For now, all active endpoints are considered public
+    // In the future, we can check endpoint.settings.is_public if needed
     
     // Check IP blocking
     if (headers.sourceIp && inboxConfig.blocked_ips?.includes(headers.sourceIp)) {
@@ -146,11 +144,11 @@ export async function POST(
     
     if (headers.sourceIp) {
       const { count: recentRequests } = await supabase
-        .from('enostics_public_inbox')
+        .from('data')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
+        .eq('endpoint_id', endpointId)
         .eq('source_ip', headers.sourceIp)
-        .gte('created_at', oneHourAgo.toISOString())
+        .gte('processed_at', oneHourAgo.toISOString())
       
       if ((recentRequests || 0) >= inboxConfig.rate_limit_per_hour) {
         return NextResponse.json(
@@ -178,6 +176,33 @@ export async function POST(
       headers.referer
     )
     
+    // Enhanced payload enrichment (temporarily simplified)
+    let enrichedData: any = null
+    try {
+      const apiKeyInfo = apiKeyUsed ? { id: apiKeyUsed, name: 'API Key' } : undefined
+      enrichedData = enrichPayload(
+        payload,
+        {
+          'user-agent': headers.userAgent || '',
+          'x-forwarded-for': headers.sourceIp || '',
+          'referer': headers.referer || '',
+          'content-type': contentType
+        },
+        apiKeyInfo
+      )
+      console.log('Enhanced data generated successfully:', JSON.stringify(enrichedData, null, 2))
+    } catch (error) {
+      console.error('Error in payload enrichment:', error)
+      // Create fallback enriched data
+      enrichedData = {
+        raw_payload: payload,
+        sender: { ip_address: headers.sourceIp, user_agent: headers.userAgent },
+        structure: { field_count: Object.keys(payload || {}).length, nested_levels: 0, data_types: ['object'] },
+        content: { category: 'general', confidence: 0.5, key_fields: [], sensitive_data: false, data_quality_score: 50 },
+        context: { timestamp_fields: [], location_fields: [], reference_ids: [], business_context: 'general' }
+      }
+    }
+    
     // Calculate abuse score
     const abuseScore = calculateAbuseScore(
       payload,
@@ -185,25 +210,46 @@ export async function POST(
       headers.userAgent
     )
     
-    // Store the request
-    const { data: inboxRequest, error: insertError } = await supabase
-      .from('enostics_public_inbox')
-      .insert({
-        user_id: userId,
-        method: 'POST',
-        source_ip: headers.sourceIp,
-        user_agent: headers.userAgent,
-        referer: headers.referer,
-        payload: payload,
-        payload_type: classification.type,
-        payload_source: classification.source,
-        content_type: contentType,
-        content_length: headers.contentLength,
-        api_key_used: apiKeyUsed,
-        is_authenticated: isAuthenticated,
-        is_suspicious: abuseScore > 50,
-        abuse_score: abuseScore
+    // Store the data in data table with enhanced information
+    // Build insert data with enhanced fields if columns exist
+    const insertData: any = {
+      endpoint_id: endpointId,
+      data: payload,
+      source_ip: headers.sourceIp,
+      headers: {
+        'user-agent': headers.userAgent,
+        'referer': headers.referer,
+        'content-type': contentType,
+        'x-forwarded-for': headers.sourceIp
+      },
+      user_agent: headers.userAgent,
+      content_type: contentType,
+      data_size: JSON.stringify(payload).length,
+      status: 'received'
+    }
+
+    // Enhanced fields - re-enable after schema is applied
+    try {
+      insertData.enriched_data = enrichedData
+      insertData.sender_info = enrichedData.sender
+      insertData.data_quality_score = enrichedData.content.data_quality_score
+      insertData.business_context = enrichedData.context.business_context
+      insertData.key_fields = enrichedData.content.key_fields
+      insertData.sensitive_data = enrichedData.content.sensitive_data
+      insertData.auto_tags = classification.tags
+      console.log('Enhanced data stored successfully:', {
+        quality_score: enrichedData.content.data_quality_score,
+        business_context: enrichedData.context.business_context,
+        key_fields: enrichedData.content.key_fields.length,
+        sender_confidence: enrichedData.sender.confidence_score
       })
+    } catch (error) {
+      console.log('Enhanced fields not available yet, using basic data only:', error)
+    }
+
+    const { data: dataRecord, error: insertError } = await supabase
+      .from('data')
+      .insert(insertData)
       .select()
       .single()
     
@@ -222,7 +268,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-        id: inboxRequest.id,
+        id: dataRecord.id,
         message: `Request received in ${username}'s inbox`,
         timestamp: new Date().toISOString(),
         response_time: `${responseTime}ms`,
@@ -239,7 +285,7 @@ export async function POST(
       { 
         status: 200,
         headers: {
-          'X-Inbox-ID': inboxRequest.id,
+          'X-Inbox-ID': dataRecord.id,
           'X-Response-Time': `${responseTime}ms`,
           'X-Enostics-Version': '3.1'
         }
@@ -265,25 +311,25 @@ export async function GET(
   try {
     const supabase = getSupabaseAdmin()
     
-    // Get user by username
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('user_id, full_name')
-      .eq('full_name', username)
+    // Get user by endpoint path
+    const { data: endpoint, error: endpointError } = await supabase
+      .from('endpoints')
+      .select('user_id, url_path')
+      .eq('url_path', username)
       .single()
     
-    if (profileError || !profile) {
+    if (endpointError || !endpoint) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Endpoint not found' },
         { status: 404 }
       )
     }
     
-    // Get inbox configuration
+    // Get inbox configuration (create default if not exists)
     const { data: config } = await supabase
-      .from('enostics_public_inbox_config')
+      .from('inbox_config')
       .select('is_public, requires_api_key, max_payload_size, rate_limit_per_hour')
-      .eq('user_id', profile.user_id)
+      .eq('user_id', endpoint.user_id)
       .single()
     
     const inboxConfig = config || {

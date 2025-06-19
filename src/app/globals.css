@@ -2,43 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme support */
+.dark {
+  color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
+}
+
 @layer base {
   :root {
-    /* Enostics Dark Theme Variables */
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 95%;
+    /* Dark Theme - Black/Grey Palette */
+    --primary-bg: 0 0% 7%;        /* #121212 - Sidebar & Topbar */
+    --secondary-bg: 0 0% 4%;      /* #0a0a0a - Main content area */
+    --hover-bg: 0 0% 12%;         /* #1f1f1f - Hover states */
+    --border-color: 0 0% 15%;     /* #262626 - Borders */
+    --text-primary: 0 0% 95%;     /* #f2f2f2 - Primary text */
+    --text-secondary: 0 0% 70%;   /* #b3b3b3 - Secondary text */
+    --text-muted: 0 0% 50%;       /* #808080 - Muted text */
+    --sidebar-bg: var(--primary-bg);  /* Sidebar background */
+
+    /* Standard theme variables */
+    --background: var(--secondary-bg);
+    --foreground: var(--text-primary);
+    --card: var(--primary-bg);
+    --card-foreground: var(--text-primary);
+    --popover: var(--primary-bg);
+    --popover-foreground: var(--text-primary);
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: var(--hover-bg);
+    --secondary-foreground: var(--text-primary);
+    --muted: var(--hover-bg);
+    --muted-foreground: var(--text-secondary);
+    --accent: var(--hover-bg);
+    --accent-foreground: var(--text-primary);
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 217 91% 60%;
+    --border: var(--border-color);
+    --input: var(--hover-bg);
+    --ring: 0 0% 50%;
     --radius: 0.5rem;
 
     /* Enostics Custom Variables */
     --enostics-grid-size: 50px;
     --enostics-grid-opacity: 0.02;
     --enostics-backdrop-blur: 10px;
-    
-    /* White opacity variants */
-    --white-05: rgba(255, 255, 255, 0.05);
-    --white-10: rgba(255, 255, 255, 0.10);
-    --white-20: rgba(255, 255, 255, 0.20);
-    --white-30: rgba(255, 255, 255, 0.30);
-    --white-50: rgba(255, 255, 255, 0.50);
-    --white-70: rgba(255, 255, 255, 0.70);
-    --white-90: rgba(255, 255, 255, 0.90);
+  }
+
+  .light {
+    /* Light Theme - White/Tan Palette */
+    --primary-bg: 35 20% 96%;     /* #f7f5f3 - Sidebar & Topbar (warm white) */
+    --secondary-bg: 0 0% 100%;    /* #ffffff - Main content area */
+    --hover-bg: 35 15% 92%;       /* #ede9e6 - Hover states (light tan) */
+    --border-color: 35 10% 85%;   /* #d9d5d1 - Borders (tan) */
+    --text-primary: 0 0% 10%;     /* #1a1a1a - Primary text */
+    --text-secondary: 0 0% 30%;   /* #4d4d4d - Secondary text */
+    --text-muted: 0 0% 50%;       /* #808080 - Muted text */
+    --sidebar-bg: var(--primary-bg);  /* Sidebar background */
+
+    /* Standard theme variables */
+    --background: var(--secondary-bg);
+    --foreground: var(--text-primary);
+    --card: var(--primary-bg);
+    --card-foreground: var(--text-primary);
+    --popover: var(--primary-bg);
+    --popover-foreground: var(--text-primary);
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 95%;
+    --secondary: var(--hover-bg);
+    --secondary-foreground: var(--text-primary);
+    --muted: var(--hover-bg);
+    --muted-foreground: var(--text-secondary);
+    --accent: var(--hover-bg);
+    --accent-foreground: var(--text-primary);
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: var(--border-color);
+    --input: var(--hover-bg);
+    --ring: 0 0% 50%;
   }
 }
 
@@ -52,8 +95,28 @@
   }
   
   body {
-    @apply bg-enostics-gray-950 text-enostics-white font-sans antialiased;
-    @apply min-h-screen;
+    @apply font-sans antialiased min-h-screen transition-colors duration-300;
+  }
+  
+  /* Default dark theme */
+  body {
+    background: hsl(var(--secondary-bg));
+    color: hsl(var(--text-primary));
+  }
+  
+  /* Light theme override */
+  .light body {
+    background: hsl(var(--secondary-bg));
+    color: hsl(var(--text-primary));
+  }
+  
+  /* Ensure all containers inherit theme colors */
+  .light * {
+    --tw-bg-opacity: 1;
+  }
+  
+  .dark * {
+    --tw-bg-opacity: 1;
   }
 
   /* Custom scrollbar */
@@ -62,15 +125,27 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-enostics-gray-900;
+    @apply bg-gray-900 dark:bg-gray-900;
+  }
+
+  .light ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-enostics-gray-700 rounded-full;
+    @apply bg-gray-700 dark:bg-gray-700 rounded-full;
+  }
+
+  .light ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-enostics-gray-600;
+    @apply bg-gray-600 dark:bg-gray-600;
+  }
+
+  .light ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
   }
 
   /* Thin scrollbar variant for sidebar */
@@ -93,6 +168,17 @@
   .hover\:scrollbar-thumb-enostics-gray-600:hover::-webkit-scrollbar-thumb {
     @apply bg-enostics-gray-600;
   }
+}
+
+@layer utilities {
+  /* Custom color utilities */
+  .bg-primary-bg { background-color: hsl(var(--primary-bg)); }
+  .bg-secondary-bg { background-color: hsl(var(--secondary-bg)); }
+  .bg-hover-bg { background-color: hsl(var(--hover-bg)); }
+  .border-border-color { border-color: hsl(var(--border-color)); }
+  .text-text-primary { color: hsl(var(--text-primary)); }
+  .text-text-secondary { color: hsl(var(--text-secondary)); }
+  .text-text-muted { color: hsl(var(--text-muted)); }
 }
 
 @layer components {

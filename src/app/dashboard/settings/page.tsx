@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Settings, CreditCard, Mail, ChevronRight } from 'lucide-react'
+import { Settings, CreditCard, Mail, ChevronRight, Activity } from 'lucide-react'
 
 export default function SettingsPage() {
   return (
@@ -17,7 +17,32 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="bg-enostics-gray-900/50 border-enostics-gray-700 hover:border-enostics-gray-600 transition-all duration-200">
+          <Link href="/dashboard/settings/usage">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-enostics-gray-800">
+                    <Activity className="h-6 w-6 text-enostics-blue" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">
+                      Usage & Logs
+                    </h3>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-enostics-gray-400" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-enostics-gray-400">
+                Monitor API usage, limits, and activity logs
+              </p>
+            </CardContent>
+          </Link>
+        </Card>
+
         <Card className="bg-enostics-gray-900/50 border-enostics-gray-700 hover:border-enostics-gray-600 transition-all duration-200">
           <Link href="/dashboard/settings/email">
             <CardHeader className="pb-4">
@@ -49,7 +74,7 @@ export default function SettingsPage() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-enostics-gray-800">
-                    <CreditCard className="h-6 w-6 text-enostics-blue" />
+                    <CreditCard className="h-6 w-6 text-green-400" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-white">

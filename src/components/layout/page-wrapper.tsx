@@ -44,9 +44,9 @@ const variantStyles = {
     hasSidebar: false
   },
   dashboard: {
-    container: 'min-h-screen bg-enostics-black text-white',
-    content: 'flex h-screen',
-    padding: 'flex-1 px-4 py-8 pb-16 lg:ml-64',
+    container: 'h-full bg-enostics-black text-white',
+    content: 'flex h-full',
+    padding: 'flex-1 lg:ml-64',
     hasSidebar: true
   }
 }

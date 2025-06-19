@@ -591,7 +591,11 @@ export default function LogsPage() {
                     {/* Icon and Status */}
                     <div className={`flex items-center gap-2 ${getStatusColor(log.status)}`}>
                       {getLogIcon(log)}
-                      <StatusIndicator status={log.status} size="sm" />
+                      <StatusIndicator 
+                        status={log.status === 'failure' ? 'error' : log.status} 
+                        label={log.status === 'failure' ? 'error' : log.status}
+                        size="sm" 
+                      />
                     </div>
 
                     {/* Main Info */}

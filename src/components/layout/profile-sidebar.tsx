@@ -4,10 +4,11 @@ interface ProfileSidebarProps {
   activeSection: string
   onSectionChange: (section: string) => void
   username?: string
+  simplified?: boolean
 }
 
-export default function ProfileSidebar({ activeSection, onSectionChange, username }: ProfileSidebarProps) {
-  const sections = [
+export default function ProfileSidebar({ activeSection, onSectionChange, username, simplified = false }: ProfileSidebarProps) {
+  const allSections = [
     {
       id: 'personal',
       label: 'Personal Info',
@@ -29,6 +30,21 @@ export default function ProfileSidebar({ activeSection, onSectionChange, usernam
       icon: Mail
     }
   ]
+
+  const simplifiedSections = [
+    {
+      id: 'personal',
+      label: 'Profile Info',
+      icon: User
+    },
+    {
+      id: 'account',
+      label: 'Account & Setup',
+      icon: Mail
+    }
+  ]
+
+  const sections = simplified ? simplifiedSections : allSections
 
   return (
     <div className="w-64 p-6">

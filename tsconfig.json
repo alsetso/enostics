@@ -26,6 +26,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/ai": [
+        "./src/ai"
       ]
     }
   },
@@ -36,6 +39,8 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "mcp-resend-server",
+    "src/components/layout/backup"
   ]
 }

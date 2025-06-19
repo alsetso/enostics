@@ -37,11 +37,15 @@ import {
   Plus,
   Send,
   X,
-  ChevronLeft
+  Link,
+  Inbox,
+  Heart
 } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
 import QRCodeLib from 'qrcode'
-import { ComposeMessageModal } from '@/components/features/compose-message-modal'
+import ComposeMessageModal from '@/components/features/compose-message-modal'
+import { CustomCheckbox } from '@/components/ui/custom-checkbox'
+
 
 
 interface InboxItem {
@@ -61,199 +65,198 @@ interface InboxItem {
   userAgent?: string
 }
 
-// Seeded data for bremercole@gmail.com
+// Seeded data for bremercole@gmail.com - 50 rows with duplicates
 const seededInboxItems: InboxItem[] = [
-  {
-    id: '1',
-    sender: 'Apple Health',
-    source: 'iot_device',
-    type: 'health_data',
-    subject: 'Daily Step Count Update',
-    preview: 'Steps: 8,432 | Distance: 4.2 miles | Calories: 412',
-    timestamp: '2 hours ago',
-    receivedAt: '2024-01-15T14:30:22Z',
-    isRead: false,
-    isStarred: true,
-    sourceIcon: <Smartphone className="h-4 w-4" />,
-    sourceIp: '192.168.1.104',
-    userAgent: 'HealthKit/1.0 (iPhone; iOS 17.2.1)',
-    data: { 
-      steps: 8432, 
-      distance: 4.2, 
-      calories: 412,
-      activeMinutes: 67,
-      heartRateAvg: 78,
-      sleepHours: 7.5,
-      deviceId: 'iPhone-A2D43F21',
-      timestamp: '2024-01-15T14:30:22Z'
-    }
-  },
-  {
-    id: '2',
-    sender: 'Stripe Webhook',
-    source: 'webhook',
-    type: 'financial_data',
-    subject: 'Payment Received',
-    preview: 'Amount: $1,299.00 | Customer: healthcare_provider_001',
-    timestamp: '5 hours ago',
-    receivedAt: '2024-01-15T11:15:33Z',
-    isRead: true,
-    isStarred: false,
-    sourceIcon: <Globe className="h-4 w-4" />,
-    sourceIp: '54.187.174.169',
-    userAgent: 'Stripe-Webhook/1.0',
-    data: { 
-      amount: 1299.00,
-      currency: 'USD',
-      customer: 'healthcare_provider_001',
-      paymentMethod: 'card_1234',
-      description: 'Health API Subscription - Premium Plan',
-      stripeId: 'pi_3OkLjKA4Z9vF8ePa1mEt2QxY',
-      metadata: {
-        planType: 'premium',
-        billingCycle: 'annual'
+  // Original 5 items repeated 10 times with slight variations
+  ...Array.from({ length: 10 }, (_, i) => [
+    {
+      id: `1-${i}`,
+      sender: 'Apple Health',
+      source: 'iot_device',
+      type: 'health_data',
+      subject: 'Daily Step Count Update',
+      preview: `Steps: ${8432 + i * 100} | Distance: ${4.2 + i * 0.1} miles | Calories: ${412 + i * 10}`,
+      timestamp: `${2 + i}h`,
+      receivedAt: `2024-01-15T${14 - i}:30:22Z`,
+      isRead: i % 3 === 0,
+      isStarred: i % 4 === 0,
+      sourceIcon: <Smartphone className="h-4 w-4" />,
+      sourceIp: '192.168.1.104',
+      userAgent: 'HealthKit/1.0 (iPhone; iOS 17.2.1)',
+      data: { 
+        steps: 8432 + i * 100, 
+        distance: 4.2 + i * 0.1, 
+        calories: 412 + i * 10,
+        activeMinutes: 67 + i,
+        heartRateAvg: 78 + i,
+        sleepHours: 7.5 + (i * 0.1),
+        deviceId: `iPhone-A2D43F21-${i}`,
+        timestamp: `2024-01-15T${14 - i}:30:22Z`
+      }
+    },
+    {
+      id: `2-${i}`,
+      sender: 'Stripe Webhook',
+      source: 'webhook',
+      type: 'financial_data',
+      subject: 'Payment Received',
+      preview: `Amount: $${1299 + i * 100}.00 | Customer: healthcare_provider_${String(i).padStart(3, '0')}`,
+      timestamp: `${5 + i}h`,
+      receivedAt: `2024-01-15T${11 - i}:15:33Z`,
+      isRead: i % 2 === 0,
+      isStarred: i % 5 === 0,
+      sourceIcon: <Globe className="h-4 w-4" />,
+      sourceIp: '54.187.174.169',
+      userAgent: 'Stripe-Webhook/1.0',
+      data: { 
+        amount: 1299 + i * 100,
+        currency: 'USD',
+        customer: `healthcare_provider_${String(i).padStart(3, '0')}`,
+        paymentMethod: `card_${1234 + i}`,
+        description: 'Health API Subscription - Premium Plan',
+        stripeId: `pi_3OkLjKA4Z9vF8ePa1mEt2Q${i}`,
+        metadata: {
+          planType: 'premium',
+          billingCycle: 'annual'
+        }
+      }
+    },
+    {
+      id: `3-${i}`,
+      sender: 'GPT-4 Assistant',
+      source: 'gpt_agent',
+      type: 'message',
+      subject: 'Health Insight Analysis Complete',
+      preview: `Analyzed your recent health trends and found ${3 + i} key insights...`,
+      timestamp: `${1 + i}d`,
+      receivedAt: `2024-01-${14 - i}T16:22:11Z`,
+      isRead: i % 3 === 1,
+      isStarred: i % 6 === 0,
+      sourceIcon: <Bot className="h-4 w-4" />,
+      sourceIp: '140.82.112.3',
+      userAgent: 'OpenAI-GPT/4.0',
+      data: { 
+        insights: [
+          `Your sleep quality improved ${23 + i}% this week`,
+          `Step count trending upward (+${12 + i}% vs last month)`,
+          'Heart rate variability suggests good recovery'
+        ],
+        analysisType: 'health_trends',
+        confidence: 0.94 - (i * 0.01),
+        dataPoints: 847 + i * 10,
+        model: 'gpt-4-turbo',
+        processingTime: `${2.3 + i * 0.1}s`
+      }
+    },
+    {
+      id: `4-${i}`,
+      sender: 'Tesla API',
+      source: 'api_client',
+      type: 'sensor_data',
+      subject: 'Vehicle Status Update',
+      preview: `Battery: ${87 - i}% | Range: ${289 - i * 5} miles | Location: ${i % 2 === 0 ? 'Home' : 'Work'}`,
+      timestamp: `${1 + i}d`,
+      receivedAt: `2024-01-${14 - i}T20:45:17Z`,
+      isRead: i % 4 === 0,
+      isStarred: i % 3 === 0,
+      sourceIcon: <Monitor className="h-4 w-4" />,
+      sourceIp: '209.133.79.61',
+      userAgent: 'Tesla-API/2.1',
+      data: { 
+        battery: 87 - i,
+        range: 289 - i * 5,
+        location: i % 2 === 0 ? 'Home' : 'Work',
+        odometer: 23847 + i * 10,
+        isCharging: i % 2 === 0,
+        temperature: 72 + i,
+        coordinates: {
+          lat: 37.7749 + (i * 0.001),
+          lng: -122.4194 + (i * 0.001)
+        },
+        vin: `5YJ3E1EA4KF12345${i}`
+      }
+    },
+    {
+      id: `5-${i}`,
+      sender: 'Notion Webhook',
+      source: 'webhook',
+      type: 'event',
+      subject: 'Database Updated',
+      preview: `New entry added to ${i % 2 === 0 ? 'Health Tracking' : 'Fitness Goals'} database`,
+      timestamp: `${2 + i}d`,
+      receivedAt: `2024-01-${13 - i}T09:30:44Z`,
+      isRead: i % 2 === 1,
+      isStarred: i % 7 === 0,
+      sourceIcon: <Globe className="h-4 w-4" />,
+      sourceIp: '104.16.132.229',
+      userAgent: 'Notion-Webhook/1.0',
+      data: { 
+        database: i % 2 === 0 ? 'Health Tracking' : 'Fitness Goals',
+        action: 'entry_added',
+        pageId: `a1b2c3d4-e5f6-7890-abcd-ef123456789${i}`,
+        properties: {
+          'Date': `2024-01-${13 - i}`,
+          'Weight': `${175 + i} lbs`,
+          'Energy Level': i % 3 === 0 ? 'High' : i % 3 === 1 ? 'Medium' : 'Low',
+          'Notes': `Feeling ${i % 2 === 0 ? 'great' : 'good'} after morning workout`
+        },
+        userId: `notion_user_${123 + i}`
       }
     }
-  },
-  {
-    id: '3',
-    sender: 'GPT-4 Assistant',
-    source: 'gpt_agent',
-    type: 'message',
-    subject: 'Health Insight Analysis Complete',
-    preview: 'Analyzed your recent health trends and found 3 key insights...',
-    timestamp: '1 day ago',
-    receivedAt: '2024-01-14T16:22:11Z',
-    isRead: true,
-    isStarred: false,
-    sourceIcon: <Bot className="h-4 w-4" />,
-    sourceIp: '140.82.112.3',
-    userAgent: 'OpenAI-GPT/4.0',
-    data: { 
-      insights: [
-        'Your sleep quality improved 23% this week',
-        'Step count trending upward (+12% vs last month)',
-        'Heart rate variability suggests good recovery'
-      ],
-      analysisType: 'health_trends',
-      confidence: 0.94,
-      dataPoints: 847,
-      model: 'gpt-4-turbo',
-      processingTime: '2.3s'
-    }
-  },
-  {
-    id: '4',
-    sender: 'Tesla API',
-    source: 'api_client',
-    type: 'sensor_data',
-    subject: 'Vehicle Status Update',
-    preview: 'Battery: 87% | Range: 289 miles | Location: Home',
-    timestamp: '1 day ago',
-    receivedAt: '2024-01-14T20:45:17Z',
-    isRead: false,
-    isStarred: true,
-    sourceIcon: <Monitor className="h-4 w-4" />,
-    sourceIp: '209.133.79.61',
-    userAgent: 'Tesla-API/2.1',
-    data: { 
-      battery: 87,
-      range: 289,
-      location: 'Home',
-      odometer: 23847,
-      isCharging: true,
-      temperature: 72,
-      coordinates: {
-        lat: 37.7749,
-        lng: -122.4194
-      },
-      vin: '5YJ3E1EA4KF123456'
-    }
-  },
-  {
-    id: '5',
-    sender: 'Notion Webhook',
-    source: 'webhook',
-    type: 'event',
-    subject: 'Database Updated',
-    preview: 'New entry added to Health Tracking database',
-    timestamp: '2 days ago',
-    receivedAt: '2024-01-13T09:30:44Z',
-    isRead: true,
-    isStarred: false,
-    sourceIcon: <Globe className="h-4 w-4" />,
-    sourceIp: '104.16.132.229',
-    userAgent: 'Notion-Webhook/1.0',
-    data: { 
-      database: 'Health Tracking',
-      action: 'entry_added',
-      pageId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      properties: {
-        'Date': '2024-01-13',
-        'Weight': '175 lbs',
-        'Energy Level': 'High',
-        'Notes': 'Feeling great after morning workout'
-      },
-      userId: 'notion_user_123'
-    }
-  }
+  ]).flat()
 ]
 
-export default function InboxPage() {
-  const [username, setUsername] = useState('bremercole')
-  const [inboxUrl, setInboxUrl] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [qrCode, setQrCode] = useState('')
+export default function DashboardPage() {
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([])
+  const [filteredItems, setFilteredItems] = useState<InboxItem[]>([])
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const [selectedEvent, setSelectedEvent] = useState<InboxItem | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSettings, setShowSettings] = useState(false)
-  const [showIntelligence, setShowIntelligence] = useState(false)
   const [showCompose, setShowCompose] = useState(false)
-
-  const [inboxItems, setInboxItems] = useState<InboxItem[]>(seededInboxItems)
-  const [showUtilityRail, setShowUtilityRail] = useState(true)
-  const [showFilterPanel, setShowFilterPanel] = useState(false)
-  const [showSettingsPanel, setShowSettingsPanel] = useState(false)
-  const [filterOptions, setFilterOptions] = useState({
-    type: 'all',
-    read: 'all',
-    starred: 'all',
-    timeRange: '7d'
-  })
-
-  // Configuration state
+  const [showIntelligence, setShowIntelligence] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [inboxUrl, setInboxUrl] = useState('')
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const [config, setConfig] = useState({
     isPublic: true,
     requiresApiKey: false,
-    maxPayloadSize: 1048576, // 1MB
     rateLimitPerHour: 1000,
-    rateLimitPerDay: 10000,
-    webhookEnabled: false,
     webhookUrl: ''
   })
 
+  const supabase = createClientSupabaseClient()
+
   useEffect(() => {
-    const url = typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/v1/${username}`
-      : `https://api.enostics.com/v1/${username}`
-    setInboxUrl(url)
-    generateQRCode(url)
-    
-    // Fetch real inbox data
     fetchInboxData()
-  }, [username])
+  }, [])
+
+  useEffect(() => {
+    // Filter items based on search query
+    if (searchQuery.trim() === '') {
+      setFilteredItems(inboxItems)
+    } else {
+      const filtered = inboxItems.filter(item => 
+        item.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.preview.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.type.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      setFilteredItems(filtered)
+    }
+  }, [searchQuery, inboxItems])
 
   const generateQRCode = async (url: string) => {
     try {
-      const qrDataUrl = await QRCodeLib.toDataURL(url, {
+      const qrCodeDataURL = await QRCodeLib.toDataURL(url, {
         width: 200,
         margin: 2,
         color: {
-          dark: '#1e293b',
+          dark: '#000000',
           light: '#FFFFFF'
         }
       })
-      setQrCode(qrDataUrl)
+      setQrCode(qrCodeDataURL)
     } catch (error) {
       console.error('Error generating QR code:', error)
     }
@@ -270,18 +273,30 @@ export default function InboxPage() {
   }
 
   const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      'sensor_data': 'text-green-400',
-      'health_data': 'text-red-400',
-      'financial_data': 'text-yellow-400',
-      'location_data': 'text-blue-400',
-      'message': 'text-purple-400',
-      'event': 'text-orange-400',
-      'task': 'text-cyan-400',
-      'note': 'text-gray-400',
-      'unknown': 'text-gray-400'
+    switch (type) {
+      case 'health_data': return 'text-red-400'
+      case 'financial_data': return 'text-green-400'
+      case 'sensor_data': return 'text-blue-400'
+      case 'message': return 'text-purple-400'
+      case 'event': return 'text-yellow-400'
+      default: return 'text-gray-400'
     }
-    return colors[type] || colors.unknown
+  }
+
+  const getSourceIcon = (source: string, type: string) => {
+    if (source === 'iot_device' || type === 'sensor_data') {
+      return <Activity className="h-4 w-4 text-purple-400" />
+    }
+    if (source === 'webhook' || type === 'financial_data') {
+      return <Globe className="h-4 w-4 text-blue-400" />
+    }
+    if (source === 'gpt_agent' || type === 'message') {
+      return <Brain className="h-4 w-4 text-yellow-400" />
+    }
+    if (type === 'health_data') {
+      return <Heart className="h-4 w-4 text-green-400" />
+    }
+    return <Database className="h-4 w-4 text-gray-400" />
   }
 
   const toggleItemSelection = (id: string) => {
@@ -293,813 +308,305 @@ export default function InboxPage() {
   }
 
   const openEventDetails = (item: InboxItem) => {
-    // Navigate to event detail page in same window
-    window.location.href = `/dashboard/inbox/event/${item.id}`
-    // Mark as read when opening
-    setInboxItems(prev => 
-      prev.map(i => 
-        i.id === item.id ? { ...i, isRead: true } : i
-      )
-    )
+    setSelectedEvent(item)
+    // Mark as read
+    setInboxItems(prev => prev.map(i => 
+      i.id === item.id ? { ...i, isRead: true } : i
+    ))
   }
 
   const toggleStar = (id: string) => {
-    setInboxItems(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, isStarred: !item.isStarred } : item
-      )
-    )
+    setInboxItems(prev => prev.map(item => 
+      item.id === id ? { ...item, isStarred: !item.isStarred } : item
+    ))
   }
-
-  const filteredItems = inboxItems.filter(item =>
-    item.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.preview.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const unreadCount = inboxItems.filter(item => !item.isRead).length
-  const starredCount = inboxItems.filter(item => item.isStarred).length
 
   const fetchInboxData = async () => {
     try {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        console.error('Failed to fetch inbox data')
+        setInboxItems([])
+        setInboxUrl(`https://api.enostics.com/v1/demo`)
+        generateQRCode(`https://api.enostics.com/v1/demo`)
+        return
+      }
+
+      // Get user's endpoint to build the correct URL
+      const { data: endpoints } = await supabase
+        .from('enostics_endpoints')
+        .select('url_path')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+
+      const userEndpoint = endpoints?.[0]?.url_path || user.email?.split('@')[0] || 'demo'
+      setInboxUrl(`https://api.enostics.com/v1/${userEndpoint}`)
+      generateQRCode(`https://api.enostics.com/v1/${userEndpoint}`)
+
+      // Fetch real inbox data
       const response = await fetch('/api/inbox/recent?limit=50')
       if (response.ok) {
-        const data = await response.json()
+        const result = await response.json()
         
-        // Transform API data to component format
-        const transformedItems = data.data.map((item: any) => ({
+        // Transform the data to match our component's expected format
+        const transformedItems: InboxItem[] = result.data.map((item: any) => ({
           id: item.id,
-          sender: item.sender || extractSenderFromPayload(item.payload),
-          source: item.source || 'unknown',
-          type: item.type || item.payload_type || 'unknown',
-          subject: generateSubjectFromPayload(item.payload),
-          preview: generatePreviewFromPayload(item.payload),
-          timestamp: formatTimestamp(item.created_at),
-          receivedAt: item.created_at,
-          isRead: item.is_read || false,
-          isStarred: item.is_starred || false,
-          sourceIcon: getSourceIcon(item.source || item.payload_source),
+          sender: item.sender,
+          source: item.source,
+          type: item.type,
+          subject: item.subject,
+          preview: item.preview,
+          timestamp: item.timestamp,
+          isRead: item.is_read,
+          isStarred: item.is_starred,
+          data: item.payload,
+          sourceIcon: getSourceIcon(item.source, item.type),
+          receivedAt: item.timestamp,
           sourceIp: item.source_ip,
-          userAgent: item.user_agent,
-          data: item.payload
+          userAgent: item.user_agent
         }))
-        
+
         setInboxItems(transformedItems)
       } else {
         console.error('Failed to fetch inbox data')
-        // Fallback to seeded data
-        setInboxItems(seededInboxItems)
+        setInboxItems([])
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching inbox data:', error)
-      // Fallback to seeded data
-      setInboxItems(seededInboxItems)
+      setInboxItems([])
     }
   }
 
-  const extractSenderFromPayload = (payload: any) => {
-    if (payload?.source) return payload.source
-    if (payload?.from) return payload.from
-    if (payload?.sender) return payload.sender
-    return 'Unknown Sender'
-  }
+  const unreadCount = filteredItems.filter(item => !item.isRead).length
 
-  const generateSubjectFromPayload = (payload: any) => {
-    if (payload?.subject) return payload.subject
-    if (payload?.title) return payload.title
-    if (payload?.type) return `${payload.type.replace('_', ' ')} Update`
-    return 'New Data Received'
-  }
-
-  const generatePreviewFromPayload = (payload: any) => {
-    const keys = Object.keys(payload?.data || payload || {})
-    if (keys.length === 0) return 'Empty payload'
-    
-    const preview = keys.slice(0, 3).map(key => {
-      const value = (payload?.data || payload)[key]
-      return `${key}: ${typeof value === 'object' ? JSON.stringify(value).slice(0, 20) : value}`
-    }).join(' | ')
-    
-    return preview.length > 80 ? preview.slice(0, 80) + '...' : preview
-  }
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    const diffDays = Math.floor(diffHours / 24)
-    
-    if (diffHours < 1) return 'Just now'
-    if (diffHours < 24) return `${diffHours} hours ago`
-    if (diffDays < 7) return `${diffDays} days ago`
-    return date.toLocaleDateString()
-  }
-
-  const getSourceIcon = (source: string) => {
-    const iconMap: Record<string, React.ReactNode> = {
-      'iot_device': <Smartphone className="h-4 w-4" />,
-      'webhook': <Globe className="h-4 w-4" />,
-      'gpt_agent': <Bot className="h-4 w-4" />,
-      'api_client': <Monitor className="h-4 w-4" />,
-      'mobile_app': <Smartphone className="h-4 w-4" />,
-      'web_app': <Globe className="h-4 w-4" />
-    }
-    return iconMap[source] || <Globe className="h-4 w-4" />
-  }
-
-  // Utility rail actions
-  const handleArchive = () => {
-    if (selectedItems.length > 0) {
-      // Archive selected items
-      console.log('Archiving items:', selectedItems)
-      // TODO: Implement archive functionality
-    }
-  }
-
-  const handleStarToggle = () => {
-    if (selectedItems.length > 0) {
-      selectedItems.forEach(id => toggleStar(id))
-    }
-  }
-
-  const handleRefresh = () => {
-    fetchInboxData()
-  }
-
-  const handleFilter = () => {
-    setShowFilterPanel(!showFilterPanel)
-  }
-
-  const handleSettings = () => {
-    setShowSettingsPanel(!showSettingsPanel)
-  }
-
-  // Keyboard shortcuts
+  // Update subtitle with record counts
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return // Don't trigger when typing in inputs
-      
-      switch (e.key.toLowerCase()) {
-        case 'a':
-          e.preventDefault()
-          handleArchive()
-          break
-        case 's':
-          e.preventDefault()
-          handleStarToggle()
-          break
-        case 'f':
-          e.preventDefault()
-          handleFilter()
-          break
-        case 'r':
-          e.preventDefault()
-          handleRefresh()
-          break
-        case 'g':
-          e.preventDefault()
-          handleSettings()
-          break
-        case 'i':
-          e.preventDefault()
-          setShowIntelligence(!showIntelligence)
-          break
-      }
+    const updateSubtitle = () => {
+      const subtitle = `${filteredItems.length} records • ${unreadCount} unread`
+      const event = new CustomEvent('updateSubtitle', { 
+        detail: { subtitle } 
+      })
+      window.dispatchEvent(event)
     }
 
-    window.addEventListener('keydown', handleKeyPress)
-    return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [selectedItems])
+    updateSubtitle()
+  }, [filteredItems.length, unreadCount])
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Top Bar - Endpoint & QR Code */}
-      <div className="border-b border-enostics-gray-800 pb-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Your Personal Inbox
-            </h1>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-enostics-gray-900 rounded-lg px-3 py-2">
-                <Globe className="h-4 w-4 text-enostics-blue" />
-                <code className="text-sm text-enostics-gray-300 font-mono">
-                  {inboxUrl}
-                </code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  className="h-6 w-6 p-0 hover:bg-enostics-gray-800"
-                >
-                  {copied ? (
-                    <Check className="h-3 w-3 text-green-400" />
-                  ) : (
-                    <Copy className="h-3 w-3 text-enostics-gray-400" />
-                  )}
-                </Button>
-              </div>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <QrCode className="h-4 w-4 mr-2" />
-                    QR Code
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Inbox QR Code</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col items-center space-y-4 py-4">
-                    {qrCode && (
-                      <img src={qrCode} alt="Inbox QR Code" className="rounded-lg" />
-                    )}
-                    <p className="text-sm text-enostics-gray-400 text-center">
-                      Scan this code to quickly access your inbox endpoint
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
+            <div className="h-full flex flex-col bg-[hsl(var(--secondary-bg))]">
+      {/* Hero Section - Fixed at top */}
+      <div className="flex-shrink-0 bg-[hsl(var(--primary-bg))] border-b border-[hsl(var(--border-color))]">
+        {/* Status Bar */}
+        <div className="h-10 bg-[hsl(var(--hover-bg))] border-b border-[hsl(var(--border-color))] flex items-center justify-between px-6">
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="text-[hsl(var(--text-muted))]">LIVE</span>
             </div>
+            <div className="text-[hsl(var(--text-muted))]">|</div>
+            <div className="text-[hsl(var(--text-muted))]">API: {inboxUrl}</div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={copyToClipboard}
+              className="h-6 px-2 text-xs"
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            </Button>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-[hsl(var(--text-muted))]">
+            <span>Records: {filteredItems.length}</span>
+            <span>Unread: {unreadCount}</span>
+            <span>Sources: 5</span>
+          </div>
+        </div>
+
+        {/* Control Bar */}
+                    <div className="h-12 bg-[hsl(var(--primary-bg))] border-b border-[hsl(var(--border-color))] flex items-center justify-between px-6">
+          <div className="flex items-center gap-2">
+            <Button size="sm" className="h-8 bg-[hsl(var(--hover-bg))] hover:bg-[hsl(var(--hover-bg))]/80 text-[hsl(var(--text-primary))]" onClick={() => setShowCompose(true)}>
+              <Send className="h-3 w-3 mr-2" />
+              Compose
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" disabled={selectedItems.length === 0}>
+              <Archive className="h-3 w-3 mr-2" />
+              Archive
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" disabled={selectedItems.length === 0}>
+              <Star className="h-3 w-3" />
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={fetchInboxData}>
+              <RefreshCw className="h-3 w-3" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-[hsl(var(--text-muted))]" />
+              <Input
+                placeholder="Search records..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-7 h-8 w-64 bg-[hsl(var(--hover-bg))] border-[hsl(var(--border-color))] text-sm text-[hsl(var(--text-primary))]"
+              />
+            </div>
+            <Button variant="outline" size="sm" className="h-8">
+              <Filter className="h-3 w-3" />
+            </Button>
+            <Button variant="outline" size="sm" className="h-8">
+              <Brain className="h-3 w-3 text-purple-400" />
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Content with Utility Rail */}
-      <div className="flex-1 flex">
-        {/* Left Utility Rail */}
-        <div className="w-14 flex flex-col items-center gap-4 py-6 border-r border-enostics-gray-800/50 bg-enostics-gray-950/50">
-          {/* Archive */}
-          <div className="relative group">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 w-10 p-0 text-enostics-gray-400 hover:text-white/80 hover:bg-enostics-gray-800/50 transition-all duration-200"
-              onClick={handleArchive}
-              disabled={selectedItems.length === 0}
-            >
-              <Archive className="h-5 w-5" />
-            </Button>
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <div className="bg-enostics-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                Archive (A)
-              </div>
-            </div>
-          </div>
-
-          {/* Star */}
-          <div className="relative group">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 w-10 p-0 text-enostics-gray-400 hover:text-white/80 hover:bg-enostics-gray-800/50 transition-all duration-200"
-              onClick={handleStarToggle}
-              disabled={selectedItems.length === 0}
-            >
-              <Star className="h-5 w-5" />
-            </Button>
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <div className="bg-enostics-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                Star (S)
-              </div>
-            </div>
-          </div>
-
-          {/* Intelligence */}
-          <div className="relative group">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-10 w-10 p-0 transition-all duration-200 ${
-                showIntelligence 
-                  ? 'text-purple-400 bg-enostics-gray-800' 
-                  : 'text-enostics-gray-400 hover:text-purple-400/80 hover:bg-enostics-gray-800/50'
-              }`}
-              onClick={() => setShowIntelligence(!showIntelligence)}
-            >
-              <Brain className="h-5 w-5" />
-            </Button>
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <div className="bg-enostics-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                Intelligence (I)
-              </div>
-            </div>
-          </div>
-
-          {/* Filter */}
-          <div className="relative group">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-10 w-10 p-0 transition-all duration-200 ${
-                showFilterPanel 
-                  ? 'text-white bg-enostics-gray-800' 
-                  : 'text-enostics-gray-400 hover:text-white/80 hover:bg-enostics-gray-800/50'
-              }`}
-              onClick={handleFilter}
-            >
-              <Filter className="h-5 w-5" />
-            </Button>
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <div className="bg-enostics-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                Filter (F)
-              </div>
-            </div>
-          </div>
-
-          {/* Refresh */}
-          <div className="relative group">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 w-10 p-0 text-enostics-gray-400 hover:text-white/80 hover:bg-enostics-gray-800/50 transition-all duration-200"
-              onClick={handleRefresh}
-            >
-              <RefreshCw className="h-5 w-5" />
-            </Button>
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <div className="bg-enostics-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                Refresh (R)
-              </div>
-            </div>
-          </div>
-
-          {/* Settings */}
-          <div className="relative group">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-10 w-10 p-0 transition-all duration-200 ${
-                showSettingsPanel 
-                  ? 'text-white bg-enostics-gray-800' 
-                  : 'text-enostics-gray-400 hover:text-white/80 hover:bg-enostics-gray-800/50'
-              }`}
-              onClick={handleSettings}
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <div className="bg-enostics-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                Settings (G)
-              </div>
-            </div>
-          </div>
+      {/* Records List - Scrollable content area */}
+      <div className="flex-1 overflow-hidden">
+        {/* Table Header - Fixed */}
+        <div className="h-10 bg-[hsl(var(--hover-bg))] border-b border-[hsl(var(--border-color))] flex items-center px-6 text-xs font-medium text-[hsl(var(--text-muted))]">
+          <div className="w-8"></div>
+          <div className="w-8"></div>
+          <div className="w-32">SOURCE</div>
+          <div className="w-24">TYPE</div>
+          <div className="flex-1">SUBJECT</div>
+          <div className="w-32">RECEIVED</div>
+          <div className="w-8"></div>
         </div>
 
-        {/* Main Inbox Content */}
-        <div className="flex-1 flex flex-col px-6">
-          {/* Gmail-style Inbox */}
-          <div className="flex-1 flex flex-col">
-            {/* Inbox Header */}
-            <div className="flex items-center justify-between mb-6 pt-2">
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Inbox ({unreadCount})
-                </h2>
-                <Badge variant="outline" className="text-xs">
-                  <Activity className="h-3 w-3 mr-1" />
-                  Live
-                </Badge>
-                <Badge variant="outline" className="text-xs text-orange-400">
-                  Seeded Data
-                </Badge>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-enostics-gray-400" />
-                  <Input
-                    placeholder="Search inbox..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Inbox Toolbar */}
-            <div className="flex items-center justify-between border-b border-enostics-gray-800 pb-4 mb-4">
-              <div className="flex items-center gap-4">
-                <Button 
-                  onClick={() => setShowCompose(true)}
-                  className="bg-enostics-blue hover:bg-enostics-blue/80 text-white"
+        {/* Records - Scrollable */}
+        <div className="flex-1 overflow-y-auto divide-y divide-[hsl(var(--border-color))]">
+          {filteredItems.map((item) => (
+            <div
+              key={item.id}
+              className={`h-12 flex items-center px-6 hover:bg-[hsl(var(--hover-bg))] cursor-pointer transition-colors group ${
+                !item.isRead ? 'bg-[hsl(var(--primary-bg))]' : 'bg-transparent'
+              }`}
+              onClick={() => openEventDetails(item)}
+            >
+              <div className="w-8 flex justify-center">
+                <CustomCheckbox
+                  checked={selectedItems.includes(item.id)}
+                  onChange={() => toggleItemSelection(item.id)}
                   size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Compose
-                </Button>
+                />
               </div>
-              
-              <div className="text-sm text-enostics-gray-400">
-                {filteredItems.length} of {inboxItems.length} items
-              </div>
-            </div>
-
-            {/* Inbox Items */}
-            <div className="flex-1 overflow-y-auto">
-              {filteredItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  className={`group flex items-center gap-3 px-4 py-3 border-b border-enostics-gray-800/30 transition-all duration-200 cursor-pointer hover:bg-enostics-gray-900/30 ${
-                    !item.isRead ? 'bg-enostics-gray-950/30' : ''
-                  } ${
-                    selectedItems.includes(item.id) 
-                      ? 'bg-indigo-500/5 border-b-indigo-500/50' 
-                      : ''
-                  } ${
-                    index === filteredItems.length - 1 ? 'border-b-0' : ''
-                  }`}
-                  onClick={() => openEventDetails(item)}
+              <div className="w-8 flex justify-center">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleStar(item.id)
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.includes(item.id)}
-                    onChange={() => toggleItemSelection(item.id)}
-                    className="rounded"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleStar(item.id)
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Star className={`h-4 w-4 ${item.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-enostics-gray-400'}`} />
-                  </button>
-
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 min-w-32">
-                      {item.sourceIcon}
-                      <span className={`text-sm truncate ${item.isRead ? 'text-enostics-gray-400' : 'text-white font-medium'}`}>
-                        {item.sender}
-                      </span>
-                      <Badge variant="outline" className={`text-xs ${getTypeColor(item.type)}`}>
-                        {item.type.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm truncate ${item.isRead ? 'text-enostics-gray-300' : 'text-white font-medium'}`}>
-                        {item.subject}
-                      </div>
-                      <div className="text-xs text-enostics-gray-500 truncate">
-                        {item.preview}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-enostics-gray-400 whitespace-nowrap">
-                        {item.timestamp}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                      >
-                        <MoreVertical className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
+                  <Star className={`h-3 w-3 ${item.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-[hsl(var(--text-muted))]'}`} />
+                </button>
+              </div>
+              <div className="w-32">
+                <div className="flex items-center gap-2 text-sm">
+                  {item.sourceIcon}
+                  <span className={`truncate ${!item.isRead ? 'text-[hsl(var(--text-primary))] font-medium' : 'text-[hsl(var(--text-secondary))]'}`}>
+                    {item.sender}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-
-
-        {/* Filter Panel */}
-        {showFilterPanel && (
-          <div className="fixed left-14 top-0 bottom-0 w-80 bg-enostics-gray-950/95 backdrop-blur-sm border-r border-enostics-gray-800/50 z-20 animate-in slide-in-from-left duration-200">
-            <div className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white">Filter Messages</h3>
+              </div>
+              <div className="w-24">
+                <span className={`text-xs px-2 py-1 rounded ${getTypeColor(item.type)} bg-[hsl(var(--hover-bg))]`}>
+                  {item.type.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm truncate ${!item.isRead ? 'text-[hsl(var(--text-primary))] font-medium' : 'text-[hsl(var(--text-secondary))]'}`}>
+                  {item.subject}
+                </div>
+                <div className="text-xs text-[hsl(var(--text-muted))] truncate">
+                  {item.preview}
+                </div>
+              </div>
+              <div className="w-32 text-right">
+                <span className="text-xs text-[hsl(var(--text-muted))]">{item.timestamp}</span>
+              </div>
+              <div className="w-8 flex justify-center">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowFilterPanel(false)}
-                  className="h-8 w-8 p-0"
+                  className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-6 flex-1">
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-white">Message Type</Label>
-                  <select
-                    value={filterOptions.type}
-                    onChange={(e) => setFilterOptions(prev => ({ ...prev, type: e.target.value }))}
-                    className="w-full bg-enostics-gray-900 border border-enostics-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-                  >
-                    <option value="all">All Types</option>
-                    <option value="health_data">Health Data</option>
-                    <option value="financial_data">Financial Data</option>
-                    <option value="sensor_data">Sensor Data</option>
-                    <option value="message">Messages</option>
-                    <option value="event">Events</option>
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-white">Read Status</Label>
-                  <select
-                    value={filterOptions.read}
-                    onChange={(e) => setFilterOptions(prev => ({ ...prev, read: e.target.value }))}
-                    className="w-full bg-enostics-gray-900 border border-enostics-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-                  >
-                    <option value="all">All Messages</option>
-                    <option value="unread">Unread Only</option>
-                    <option value="read">Read Only</option>
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-white">Starred</Label>
-                  <select
-                    value={filterOptions.starred}
-                    onChange={(e) => setFilterOptions(prev => ({ ...prev, starred: e.target.value }))}
-                    className="w-full bg-enostics-gray-900 border border-enostics-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-                  >
-                    <option value="all">All Messages</option>
-                    <option value="starred">Starred Only</option>
-                    <option value="unstarred">Unstarred Only</option>
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-white">Time Range</Label>
-                  <select
-                    value={filterOptions.timeRange}
-                    onChange={(e) => setFilterOptions(prev => ({ ...prev, timeRange: e.target.value }))}
-                    className="w-full bg-enostics-gray-900 border border-enostics-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-                  >
-                    <option value="1d">Last 24 Hours</option>
-                    <option value="7d">Last 7 Days</option>
-                    <option value="30d">Last 30 Days</option>
-                    <option value="all">All Time</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-4 border-t border-enostics-gray-800">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFilterOptions({ type: 'all', read: 'all', starred: 'all', timeRange: '7d' })}
-                  className="flex-1"
-                >
-                  Clear
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setShowFilterPanel(false)}
-                  className="flex-1 bg-enostics-blue hover:bg-enostics-blue/80"
-                >
-                  Apply
+                  <MoreVertical className="h-3 w-3" />
                 </Button>
               </div>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
 
-        {/* Settings Panel */}
-        {showSettingsPanel && (
-          <div className="fixed left-14 top-0 bottom-0 w-80 bg-enostics-gray-950/95 backdrop-blur-sm border-r border-enostics-gray-800/50 z-20 animate-in slide-in-from-left duration-200">
-            <div className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white">Inbox Settings</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSettingsPanel(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-6 flex-1">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="public" className="text-sm font-medium text-white">Public Access</Label>
-                  <Switch
-                    id="public"
-                    checked={config.isPublic}
-                    onCheckedChange={(checked) =>
-                      setConfig(prev => ({ ...prev, isPublic: checked }))
-                    }
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="api-key" className="text-sm font-medium text-white">Require API Key</Label>
-                  <Switch
-                    id="api-key"
-                    checked={config.requiresApiKey}
-                    onCheckedChange={(checked) =>
-                      setConfig(prev => ({ ...prev, requiresApiKey: checked }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rate-limit" className="text-sm font-medium text-white">Rate Limit (per hour)</Label>
-                  <Input
-                    id="rate-limit"
-                    type="number"
-                    value={config.rateLimitPerHour}
-                    onChange={(e) =>
-                      setConfig(prev => ({ ...prev, rateLimitPerHour: parseInt(e.target.value) }))
-                    }
-                    className="bg-enostics-gray-900 border-enostics-gray-700"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="webhook-url" className="text-sm font-medium text-white">Webhook URL (optional)</Label>
-                  <Input
-                    id="webhook-url"
-                    placeholder="https://your-webhook-url.com"
-                    value={config.webhookUrl}
-                    onChange={(e) =>
-                      setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))
-                    }
-                    className="bg-enostics-gray-900 border-enostics-gray-700"
-                  />
-                </div>
-              </div>
-              
-              <div className="pt-4 border-t border-enostics-gray-800">
-                <Button 
-                  onClick={() => setShowSettingsPanel(false)}
-                  className="w-full bg-enostics-blue hover:bg-enostics-blue/80"
-                >
-                  Save Settings
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Intelligence Panel */}
-        {showIntelligence && (
-          <div className="fixed left-14 top-0 bottom-0 w-96 bg-enostics-gray-950/95 backdrop-blur-sm border-r border-enostics-gray-800/50 z-20 animate-in slide-in-from-left duration-200">
-            <div className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-purple-400" />
-                  Inbox Intelligence
-                  <Badge variant="outline" className="text-xs">
-                    Coming Soon
+      {/* Event Detail Modal */}
+      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+                    <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-[hsl(var(--primary-bg))] border-[hsl(var(--border-color))]">
+          {selectedEvent && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3 text-[hsl(var(--text-primary))]">
+                  {selectedEvent.sourceIcon}
+                  <span>{selectedEvent.subject}</span>
+                  <Badge variant="outline" className={`text-xs ${getTypeColor(selectedEvent.type)}`}>
+                    {selectedEvent.type.replace('_', ' ')}
                   </Badge>
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowIntelligence(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-6 flex-1 overflow-y-auto">
-                <div className="text-sm text-enostics-gray-400">
-                  Your personal, private AI assistant will help analyze and categorize incoming data.
-                </div>
-                
-                <div className="grid grid-cols-1 gap-4">
-                  <Card variant="glass">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Data Types</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-red-400">Health Data</span>
-                          <span>40%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-green-400">Sensor Data</span>
-                          <span>25%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-yellow-400">Financial</span>
-                          <span>20%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-purple-400">Messages</span>
-                          <span>15%</span>
-                        </div>
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                {/* Event Header */}
+                <div className="bg-[hsl(var(--hover-bg))] p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[hsl(var(--text-secondary))]">Sender:</span>
+                        <span className="text-[hsl(var(--text-primary))]">{selectedEvent.sender}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card variant="glass">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Sources</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>IoT Devices</span>
-                          <span>45%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Webhooks</span>
-                          <span>30%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>AI Agents</span>
-                          <span>15%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>API Clients</span>
-                          <span>10%</span>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[hsl(var(--text-secondary))]">Received:</span>
+                        <span className="text-[hsl(var(--text-primary))]">{new Date(selectedEvent.receivedAt).toLocaleString()}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card variant="glass">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Recent Insights</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-400 mt-2 flex-shrink-0"></div>
-                          <div>
-                            <div className="text-white font-medium">Pattern detected in health data</div>
-                            <div className="text-enostics-gray-400 text-xs">Your step count shows consistent improvement over the last 7 days</div>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full bg-yellow-400 mt-2 flex-shrink-0"></div>
-                          <div>
-                            <div className="text-white font-medium">Anomaly in financial data</div>
-                            <div className="text-enostics-gray-400 text-xs">Payment amount 3x higher than usual - flagged for review</div>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full bg-blue-400 mt-2 flex-shrink-0"></div>
-                          <div>
-                            <div className="text-white font-medium">Data correlation found</div>
-                            <div className="text-enostics-gray-400 text-xs">Vehicle charging patterns align with your daily routine</div>
-                          </div>
-                        </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[hsl(var(--text-secondary))]">Source:</span>
+                        <span className="text-[hsl(var(--text-primary))]">{selectedEvent.source.replace('_', ' ')}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card variant="glass">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Suggested Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Button variant="outline" size="sm" className="w-full text-xs justify-start">
-                          <Zap className="h-3 w-3 mr-2" />
-                          Create health trend automation
-                        </Button>
-                        <Button variant="outline" size="sm" className="w-full text-xs justify-start">
-                          <AlertCircle className="h-3 w-3 mr-2" />
-                          Set payment threshold alert
-                        </Button>
-                        <Button variant="outline" size="sm" className="w-full text-xs justify-start">
-                          <Activity className="h-3 w-3 mr-2" />
-                          Export correlation analysis
-                        </Button>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[hsl(var(--text-secondary))]">Event ID:</span>
+                        <span className="font-mono text-xs text-[hsl(var(--text-primary))]">{selectedEvent.id}</span>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="bg-enostics-gray-800 rounded-lg p-3">
-                  <p className="text-xs text-enostics-gray-400">
-                    <Shield className="h-3 w-3 inline mr-1" />
-                    All intelligence processing happens locally on your device. Your data never leaves your control.
-                  </p>
+                {/* Data Payload */}
+                <div>
+                  <h3 className="text-lg font-semibold text-[hsl(var(--text-primary))] mb-3 flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    Data Payload
+                  </h3>
+                  <div className="bg-[hsl(var(--hover-bg))] p-4 border border-[hsl(var(--border-color))]">
+                    <pre className="text-sm text-[hsl(var(--text-secondary))] whitespace-pre-wrap font-mono overflow-x-auto">
+                      {JSON.stringify(selectedEvent.data, null, 2)}
+                    </pre>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Compose Message Modal */}
       <ComposeMessageModal
         isOpen={showCompose}
         onClose={() => setShowCompose(false)}
-        onSend={(message: any) => {
+        onSent={(result) => {
           // Optionally refresh inbox after sending
           fetchInboxData()
         }}

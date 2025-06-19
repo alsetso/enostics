@@ -147,6 +147,9 @@ export default function RegisterPage() {
     setErrors({})
     
     try {
+      // Get selected plan details for metadata
+      const selectedPlanDetails = plans.find(p => p.id === selectedPlan)
+      
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -155,7 +158,15 @@ export default function RegisterPage() {
           data: {
             username: formData.username,
             full_name: formData.username,
-            selected_plan: selectedPlan
+            display_name: formData.username,
+            selected_plan: selectedPlan,
+            plan_tier: selectedPlan,
+            plan_name: selectedPlanDetails?.name || 'Citizen',
+            plan_price: selectedPlanDetails?.price || 0,
+            plan_period: selectedPlanDetails?.period || 'forever',
+            registration_source: 'web_registration',
+            registration_timestamp: new Date().toISOString(),
+            endpoint_path: formData.username
           }
         }
       })
@@ -163,6 +174,10 @@ export default function RegisterPage() {
       if (error) {
         if (error.message.includes('already registered')) {
           setErrors({ email: 'This email is already registered. Try signing in instead.' })
+        } else if (error.message.includes('invalid email')) {
+          setErrors({ email: 'Please enter a valid email address.' })
+        } else if (error.message.includes('password')) {
+          setErrors({ password: 'Password must be at least 8 characters long.' })
         } else {
           setErrors({ general: error.message })
         }

@@ -15,4 +15,12 @@ export { WebhookManager } from './webhook-manager'
 export { UniversalInboxViewer } from './universal-inbox-viewer'
 export { ClassificationVisualizer } from './classification-visualizer'
 export { UpgradeModal } from './upgrade-modal'
-export { ComposeMessageModal } from './compose-message-modal' 
+export { default as ComposeMessageModal } from './compose-message-modal'
+export { EnhancedUsageDashboard } from './enhanced-usage-dashboard'
+export { WebhookDashboard } from './webhook-dashboard'
+
+// Onboarding System
+export { OnboardingWizard } from './onboarding-wizard'
+export { PlanConfirmation } from './plan-confirmation'
+export { EndpointSetup } from './endpoint-setup'
+export { WelcomeTour } from './welcome-tour' 

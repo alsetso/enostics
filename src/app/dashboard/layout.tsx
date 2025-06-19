@@ -1,25 +1,16 @@
-import { createServerSupabaseClient } from '@/lib/supabase'
-import { redirect } from 'next/navigation'
+import { ReactNode } from 'react'
 import { DashboardLayoutClient } from './layout-client'
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const supabase = await createServerSupabaseClient()
-  
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+interface DashboardLayoutProps {
+  children: ReactNode
+}
 
-  if (!user) {
-    redirect('/login')
-  }
-
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <DashboardLayoutClient>
-      {children}
-    </DashboardLayoutClient>
+    <div className="h-screen overflow-hidden bg-[hsl(var(--secondary-bg))]">
+      <DashboardLayoutClient>
+        {children}
+      </DashboardLayoutClient>
+    </div>
   )
 } 

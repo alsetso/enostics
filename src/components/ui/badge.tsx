@@ -8,9 +8,9 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "border-transparent bg-enostics-blue text-white hover:bg-enostics-blue/80",
-        secondary: "border-transparent bg-enostics-gray-800 text-enostics-gray-300 hover:bg-enostics-gray-700",
+        secondary: "border-transparent bg-[hsl(var(--hover-bg))] text-[hsl(var(--text-secondary))] hover:bg-[hsl(var(--hover-bg))]/80",
         destructive: "border-transparent bg-enostics-red text-white hover:bg-enostics-red/80",
-        outline: "text-foreground border-current",
+        outline: "text-[hsl(var(--text-secondary))] border-[hsl(var(--border-color))]",
         success: "border-transparent bg-enostics-green text-white hover:bg-enostics-green/80",
         warning: "border-transparent bg-enostics-amber text-white hover:bg-enostics-amber/80",
       },
