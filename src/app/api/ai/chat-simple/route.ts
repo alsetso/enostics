@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { functionRegistry } from '../../../../ai/tools/function-calling/function-registry'
 
 // Model routing configuration
 const isOpenAIModel = (model: string) => {
@@ -12,7 +13,7 @@ const isOllamaModel = (model: string) => {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, model = 'gpt-4o-mini', conversation = [] } = body
+    const { message, model = 'gpt-4o-mini', conversation = [], enableFunctions = true } = body
 
     if (!message) {
       return NextResponse.json({
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     let response, data
 
     if (isOpenAIModel(model)) {
-      // Handle OpenAI models
+      // Handle OpenAI models with function calling
       if (!process.env.OPENAI_API_KEY) {
         throw new Error('OpenAI API key not configured')
       }
@@ -34,7 +35,15 @@ export async function POST(request: NextRequest) {
       const messages = [
         {
           role: 'system',
-          content: 'You are a helpful AI assistant specialized in processing JSON payloads, filtering data, tagging content, and providing summaries. You can also handle general conversations.'
+          content: `You are a helpful AI assistant for Enostics, a universal personal API platform. You can:
+- Process and analyze JSON payloads
+- Browse websites for real-time information
+- Classify and tag data with business context
+- Assess security and quality risks
+- Query databases for patterns and insights
+- Call external APIs for data enrichment
+
+Use the available functions when helpful to provide comprehensive answers. Always explain what you're doing when using functions.`
         },
         ...conversation.slice(-5).map((msg: any) => ({
           role: msg.role === 'user' ? 'user' : 'assistant',
@@ -46,19 +55,27 @@ export async function POST(request: NextRequest) {
         }
       ]
 
+      // Prepare function calling if enabled
+      const requestBody: any = {
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1000,
+        stream: false
+      }
+
+      if (enableFunctions) {
+        requestBody.functions = functionRegistry.getDefinitions()
+        requestBody.function_call = 'auto'
+      }
+
       response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
         },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.7,
-          max_tokens: 500,
-          stream: false
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
@@ -67,9 +84,79 @@ export async function POST(request: NextRequest) {
       }
 
       data = await response.json()
+      const choice = data.choices[0]
 
+      // Handle function calling
+      if (choice.message.function_call) {
+        const functionCall = choice.message.function_call
+        console.log(`🔧 Function called: ${functionCall.name}`)
+        
+        try {
+          // Execute the function
+          const functionArgs = JSON.parse(functionCall.arguments)
+          const functionResult = await functionRegistry.execute(functionCall.name, functionArgs)
+          
+          // Send function result back to OpenAI for final response
+          const followUpMessages = [
+            ...messages,
+            choice.message,
+            {
+              role: 'function',
+              name: functionCall.name,
+              content: JSON.stringify(functionResult)
+            }
+          ]
+
+          const followUpResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model,
+              messages: followUpMessages,
+              temperature: 0.7,
+              max_tokens: 1000,
+              stream: false
+            })
+          })
+
+          if (followUpResponse.ok) {
+            const followUpData = await followUpResponse.json()
+            return NextResponse.json({
+              response: followUpData.choices[0].message.content,
+              model: followUpData.model,
+              metadata: {
+                timestamp: new Date().toISOString(),
+                provider: 'openai',
+                tokensUsed: data.usage?.total_tokens + followUpData.usage?.total_tokens,
+                cost: calculateOpenAICost(model, (data.usage?.total_tokens || 0) + (followUpData.usage?.total_tokens || 0)),
+                functionCalled: functionCall.name,
+                functionResult: functionResult
+              }
+            })
+          }
+        } catch (functionError) {
+          console.error('Function execution error:', functionError)
+          // Return the original response with error info
+          return NextResponse.json({
+            response: `I tried to use the ${functionCall.name} function but encountered an error: ${functionError instanceof Error ? functionError.message : String(functionError)}. Here's what I can tell you: ${choice.message.content || 'Let me help you with your question.'}`,
+            model: data.model,
+            metadata: {
+              timestamp: new Date().toISOString(),
+              provider: 'openai',
+              tokensUsed: data.usage?.total_tokens,
+              cost: calculateOpenAICost(model, data.usage?.total_tokens || 0),
+              functionError: functionError instanceof Error ? functionError.message : String(functionError)
+            }
+          })
+        }
+      }
+
+      // Regular response without function calling
       return NextResponse.json({
-        response: data.choices[0].message.content,
+        response: choice.message.content,
         model: data.model,
         metadata: {
           timestamp: new Date().toISOString(),
@@ -80,7 +167,7 @@ export async function POST(request: NextRequest) {
       })
 
     } else if (isOllamaModel(model)) {
-      // Handle Ollama local models
+      // Handle Ollama local models (no function calling support)
       response = await fetch('http://127.0.0.1:11434/api/generate', {
         method: 'POST',
         headers: {

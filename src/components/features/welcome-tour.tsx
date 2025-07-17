@@ -26,6 +26,7 @@ import {
   Star,
   Rocket
 } from 'lucide-react'
+import Link from 'next/link'
 
 interface WelcomeTourProps {
   endpoint: any
@@ -142,6 +143,19 @@ export function WelcomeTour({ endpoint, organization }: WelcomeTourProps) {
       default: return 'bg-gray-500/10 border-gray-500/20 text-gray-400'
     }
   }
+
+  const nextSteps = [
+    {
+      title: 'Explore Analytics',
+      description: 'Monitor your endpoint performance and data flow in real-time.',
+      href: '/dashboard/analytics'
+    },
+    {
+      title: 'Manage Your Data',
+      description: 'View, organize, and manage all your incoming data.',
+      href: '/dashboard/data'
+    }
+  ]
 
   return (
     <div className="space-y-6">
@@ -324,20 +338,35 @@ export function WelcomeTour({ endpoint, organization }: WelcomeTourProps) {
       {/* Next Steps */}
       <div className="bg-gradient-to-r from-brand/10 to-purple-500/10 rounded-lg p-6 border border-brand/20">
         <div className="text-center">
-          <h5 className="font-semibold text-white mb-2">🎉 You're all set!</h5>
-          <p className="text-enostics-gray-400 mb-4">
-            Your Enostics account is ready. Start by sending data to your endpoint or exploring the dashboard features.
+          <h3 className="text-xl font-semibold text-white mb-2">You're all set!</h3>
+          <p className="text-enostics-gray-400">
+            Your endpoint is live and ready to receive data. Here are some things you can do next:
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button onClick={() => window.open('/dashboard/playground', '_blank')}>
-              <Play className="h-4 w-4 mr-2" />
-              Send Test Request
-            </Button>
-            <Button variant="outline" onClick={() => window.open('/docs', '_blank')}>
-              <ExternalLink className="h-4 w-4 mr-2" />
-              View Documentation
-            </Button>
-          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {nextSteps.map((step, index) => (
+            <Card key={index} className="bg-enostics-gray-800/50 border-enostics-gray-700 hover:bg-enostics-gray-800 transition-colors">
+              <CardContent className="p-4">
+                <h4 className="font-medium text-white mb-2">{step.title}</h4>
+                <p className="text-sm text-enostics-gray-400 mb-3">{step.description}</p>
+                <Link href={step.href}>
+                  <Button size="sm" className="w-full bg-enostics-blue hover:bg-enostics-blue/80">
+                    Get Started
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="flex justify-center gap-4">
+          <Button onClick={() => window.open('/dashboard/chat', '_blank')}>
+            Start Chatting
+          </Button>
+          <Button variant="outline" onClick={() => window.open('/dashboard/endpoints', '_blank')}>
+            View Endpoints
+          </Button>
         </div>
       </div>
 

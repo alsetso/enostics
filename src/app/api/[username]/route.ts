@@ -102,9 +102,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { username: string } }
 ) {
+  const { username } = params
+  
   return NextResponse.json({
-    message: `This is ${params.username}'s personal data endpoint`,
-    usage: 'Send POST requests with JSON data to this endpoint',
-    endpoint: `enostics.com/api/${params.username}`
+    message: `Hello from ${username}'s endpoint`,
+    timestamp: new Date().toISOString(),
+    endpoint: `/api/${username}`,
+    status: 'active'
   })
 } 

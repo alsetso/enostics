@@ -188,7 +188,8 @@ export function DocLayout({ section, children }: DocLayoutProps) {
             <div className="px-8 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Link href="/" className="text-white text-xl font-semibold hover:text-brand transition-colors">
+                  <Link href="/" className="text-white text-xl font-semibold hover:text-brand transition-colors flex items-center gap-2">
+                    <img src="/enostics.png" alt="Enostics" className="h-6 w-6" />
                     enostics
                   </Link>
                   <span className="text-white/40">/</span>

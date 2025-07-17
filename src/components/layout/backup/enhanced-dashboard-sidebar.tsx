@@ -87,21 +87,14 @@ const comingSoonNavigation = [
     href: '/dashboard/workflows', 
     icon: Workflow, 
     description: 'Automate your processes',
-    locked: true
+    status: 'coming-soon'
   },
   { 
-    name: 'Integrations', 
-    href: '/dashboard/integrations', 
-    icon: Plug, 
-    description: 'Connect external services',
-    locked: true
-  },
-  { 
-    name: 'API Keys', 
+    name: 'Keys', 
     href: '/dashboard/keys', 
     icon: Key, 
     description: 'Manage authentication keys',
-    locked: true
+    status: 'live'
   },
   { 
     name: 'Data', 
@@ -544,19 +537,19 @@ function SidebarContent({
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
         {/* Main Navigation */}
         <div className="space-y-1">
-          {navigation.map(item => renderNavItem(item))}
+          {mainNavigation.map(item => renderNavItem(item))}
         </div>
 
         {/* Agents Section */}
-        {renderSection('AI Agents', agentsNavigation, 'agents')}
+        {renderSection('AI Agents', comingSoonNavigation.filter(item => item.locked), 'agents')}
 
         {/* Tools Section */}
-        {renderSection('Tools', toolsNavigation, 'tools')}
+        {renderSection('Tools', comingSoonNavigation.filter(item => item.locked), 'tools')}
 
         {/* Settings */}
         {!isCollapsed && (
           <div className="space-y-1">
-            {settingsNavigation.map(item => renderNavItem(item, false))}
+            {bottomNavigation.map(item => renderNavItem(item, false))}
           </div>
         )}
 

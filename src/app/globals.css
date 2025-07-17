@@ -87,7 +87,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-gray-200 dark:border-gray-800;
   }
   
   html {
@@ -179,6 +179,15 @@
   .text-text-primary { color: hsl(var(--text-primary)); }
   .text-text-secondary { color: hsl(var(--text-secondary)); }
   .text-text-muted { color: hsl(var(--text-muted)); }
+
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.7s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
 
 @layer components {
@@ -277,10 +286,6 @@
   }
 
   /* Animations */
-  .animate-fade-in {
-    @apply animate-fade-in;
-  }
-
   .animate-slide-in {
     @apply animate-slide-in;
   }

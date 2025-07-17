@@ -9,9 +9,9 @@ export async function GET() {
     const checks = {
       database_connection: false,
       user_profiles_table: false,
-      enostics_endpoints_table: false,
-      enostics_data_table: false,
-      enostics_api_keys_table: false,
+      endpoints_table: false,
+      data_table: false,
+      api_keys_table: false,
       trigger_function: false
     }
 
@@ -28,9 +28,9 @@ export async function GET() {
 
     // Test endpoints table
     try {
-      const { data, error } = await supabase.from('enostics_endpoints').select('count').limit(1)
+      const { data, error } = await supabase.from('endpoints').select('count').limit(1)
       if (!error) {
-        checks.enostics_endpoints_table = true
+        checks.endpoints_table = true
       }
     } catch (err) {
       console.error('Endpoints table test failed:', err)
@@ -38,19 +38,19 @@ export async function GET() {
 
     // Test data table
     try {
-      const { data, error } = await supabase.from('enostics_data').select('count').limit(1)
+      const { data, error } = await supabase.from('data').select('count').limit(1)
       if (!error) {
-        checks.enostics_data_table = true
+        checks.data_table = true
       }
     } catch (err) {
       console.error('Data table test failed:', err)
     }
 
-    // Test API keys table
+    // Test API keys table (check if it exists with any name)
     try {
-      const { data, error } = await supabase.from('enostics_api_keys').select('count').limit(1)
+      const { data, error } = await supabase.from('keys').select('count').limit(1)
       if (!error) {
-        checks.enostics_api_keys_table = true
+        checks.api_keys_table = true
       }
     } catch (err) {
       console.error('API keys table test failed:', err)

@@ -1,0 +1,71 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Claude Code Integration",
+        "description": "Integrate Claude Code CLI tool into Enostics endpoints",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Create API wrapper for Claude Code CLI tool, implement session management, and add security sandboxing.",
+        "testStrategy": "Test with sample code requests and verify proper isolation"
+      },
+      {
+        "id": 2,
+        "title": "Create Task Master API Endpoints",
+        "description": "Build REST API endpoints for Task Master functionality",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "Implement /api/ai/tasks endpoints, add authentication middleware, integrate with existing user system.",
+        "testStrategy": "API testing with Postman and integration tests"
+      },
+      {
+        "id": 3,
+        "title": "Dashboard UI Integration",
+        "description": "Add AI tools section to Enostics dashboard",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2
+        ],
+        "priority": "medium",
+        "details": "Create new Dev Studio section, add real-time session viewer, integrate with existing dashboard components.",
+        "testStrategy": "Manual UI testing and user acceptance testing",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Dev Studio Layout",
+            "description": "Design and implement the main layout for AI tools",
+            "status": "pending",
+            "dependencies": [],
+            "priority": "medium",
+            "details": "Use existing dashboard patterns, add navigation tabs for Code and Tasks",
+            "testStrategy": "Visual testing across different screen sizes"
+          },
+          {
+            "id": 2,
+            "title": "Add Real-time Session Viewer",
+            "description": "Show live coding sessions and task updates",
+            "status": "in-progress",
+            "dependencies": [
+              1
+            ],
+            "priority": "high",
+            "details": "WebSocket integration for real-time updates, display session status and logs",
+            "testStrategy": "Test with multiple concurrent sessions"
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "projectName": "Enostics AI Integration",
+      "version": "1.0.0",
+      "createdAt": "2025-06-20T18:25:00Z",
+      "updatedAt": "2025-06-20T18:25:00Z"
+    }
+  }
+}

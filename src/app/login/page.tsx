@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { createClientSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -63,7 +62,6 @@ export default function LoginPage() {
         setError(error.message)
         setOauthLoading(null)
       }
-      // Note: If successful, user will be redirected, so no need to clear loading state
     } catch (err) {
       setError('An unexpected error occurred')
       setOauthLoading(null)
@@ -75,31 +73,31 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white">enostics</h2>
-          <p className="mt-2 text-sm text-enostics-gray-400">
+          <div className="flex justify-center mb-4">
+            <img src="/enostics.png" alt="Enostics" className="h-8 w-8" />
+          </div>
+          <p className="text-sm text-gray-400">
             Sign in to your account
           </p>
         </div>
 
-        <Card variant="glass">
-          <CardHeader>
-            <CardTitle>Welcome back</CardTitle>
-            <CardDescription>
-              Enter your credentials to access your dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* OAuth Buttons - 2x1 Grid */}
+        <div className="bg-enostics-gray-900/50 backdrop-blur-sm rounded-2xl border border-enostics-gray-800 p-8 shadow-2xl">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
+              <p className="text-gray-400 text-sm">
+                Enter your credentials to access your dashboard
+              </p>
+            </div>
+
+            {/* OAuth Buttons */}
             <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => handleOAuthLogin('google')}
-                disabled={!!oauthLoading}
-              >
-                {oauthLoading === 'google' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                ) : (
+              <div className="relative group">
+                <Button
+                  variant="outline"
+                  className="w-full bg-enostics-gray-800/50 border-enostics-gray-700 text-enostics-gray-300 hover:bg-enostics-gray-700 hover:text-white transition-all duration-200 cursor-not-allowed opacity-50"
+                  disabled
+                >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
                     <path
                       fill="currentColor"
@@ -118,30 +116,33 @@ export default function LoginPage() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                )}
-                <span className="ml-2 text-sm">Google</span>
-              </Button>
+                  <span className="ml-2 text-sm">Google</span>
+                </Button>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-enostics-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                  Not ready
+                </div>
+              </div>
 
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => handleOAuthLogin('github')}
-                disabled={!!oauthLoading}
-              >
-                {oauthLoading === 'github' ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                ) : (
+              <div className="relative group">
+                <Button
+                  variant="outline"
+                  className="w-full bg-enostics-gray-800/50 border-enostics-gray-700 text-enostics-gray-300 hover:bg-enostics-gray-700 hover:text-white transition-all duration-200 cursor-not-allowed opacity-50"
+                  disabled
+                >
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                   </svg>
-                )}
-                <span className="ml-2 text-sm">GitHub</span>
-              </Button>
+                  <span className="ml-2 text-sm">GitHub</span>
+                </Button>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-enostics-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                  Not ready
+                </div>
+              </div>
             </div>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-enostics-gray-700" />
+                <div className="w-full border-t border-gray-700" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-enostics-gray-950 px-2 text-enostics-gray-500">
@@ -152,52 +153,85 @@ export default function LoginPage() {
 
             {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-4">
-              <Input
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-              />
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full px-4 py-3 bg-enostics-gray-900/50 border border-enostics-gray-700 rounded-lg text-white placeholder:text-enostics-gray-500 focus:ring-2 focus:ring-enostics-green focus:border-enostics-green transition-all duration-200"
+                  required
+                />
+              </div>
               
-              <Input
-                label="Password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 bg-enostics-gray-900/50 border border-enostics-gray-700 rounded-lg text-white placeholder:text-enostics-gray-500 focus:ring-2 focus:ring-enostics-green focus:border-enostics-green transition-all duration-200"
+                  required
+                />
+              </div>
 
               {error && (
-                <div className="rounded-lg bg-enostics-red/10 border border-enostics-red/20 p-3">
-                  <p className="text-sm text-enostics-red">{error}</p>
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+                  <p className="text-sm text-red-400">{error}</p>
                 </div>
               )}
 
               <Button
                 type="submit"
-                className="w-full"
-                loading={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium py-3 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                disabled={loading}
               >
-                Sign in
+                {loading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  'Sign in'
+                )}
               </Button>
             </form>
 
-            <div className="text-center text-sm">
-              <span className="text-enostics-gray-400">
-                Don't have an account?{' '}
-              </span>
-              <Link
-                href="/register"
-                className="text-brand hover:text-brand-light transition-colors"
-              >
-                Sign up
-              </Link>
+            <div className="text-center text-sm space-y-2">
+              <div>
+                <span className="text-enostics-gray-400">
+                  Don't have an account?{' '}
+                </span>
+                <Link
+                  href="/register"
+                  className="text-green-400 hover:text-green-300 transition-colors duration-200"
+                >
+                  Sign Up
+                </Link>
+              </div>
+              <div className="text-enostics-gray-500">
+                <Link
+                  href="/terms-of-use"
+                  className="text-green-400 hover:text-green-300 transition-colors duration-200"
+                >
+                  Terms
+                </Link>
+                {' • '}
+                <Link
+                  href="/privacy-policy"
+                  className="text-green-400 hover:text-green-300 transition-colors duration-200"
+                >
+                  Privacy Policy
+                </Link>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

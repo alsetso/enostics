@@ -163,8 +163,8 @@ const features = [
 export function BillingTable({ currentPlan = 'citizen', onPlanChange }: BillingTableProps) {
   return (
     <div className="space-y-8">
-      {/* Plan Cards - Mobile/Tablet Stacked, Desktop Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+      {/* Plan Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-3">
         {plans.map((plan) => (
           <BillingPlanCard
             key={plan.id}
@@ -177,17 +177,17 @@ export function BillingTable({ currentPlan = 'citizen', onPlanChange }: BillingT
 
       {/* Feature Comparison Table - Desktop Only */}
       <div className="hidden lg:block">
-        <div className="bg-enostics-gray-900/50 rounded-lg border border-enostics-gray-700 overflow-hidden">
+        <div className="border border-gray-200 dark:border-gray-700 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-4 gap-6 p-6 bg-enostics-gray-800/50 border-b border-enostics-gray-700">
-            <div className="font-semibold text-white">Features</div>
-            <div className="text-center font-semibold text-white">Citizen</div>
-            <div className="text-center font-semibold text-white">Developer</div>
-            <div className="text-center font-semibold text-white">Business</div>
+          <div className="grid grid-cols-4 gap-6 p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="font-semibold text-gray-900 dark:text-white">Features</div>
+            <div className="text-center font-semibold text-gray-900 dark:text-white">Citizen</div>
+            <div className="text-center font-semibold text-gray-900 dark:text-white">Developer</div>
+            <div className="text-center font-semibold text-gray-900 dark:text-white">Business</div>
           </div>
 
           {/* Feature Rows */}
-          <div className="divide-y divide-enostics-gray-700">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {features.map((feature, index) => (
               <BillingFeatureRow
                 key={feature.label}
@@ -199,36 +199,11 @@ export function BillingTable({ currentPlan = 'citizen', onPlanChange }: BillingT
         </div>
       </div>
 
-      {/* Mobile Feature List */}
-      <div className="lg:hidden space-y-6">
-        <h3 className="text-xl font-semibold text-white">Compare Plans</h3>
-        {plans.map((plan) => (
-          <div key={plan.id} className="bg-enostics-gray-900/50 rounded-lg border border-enostics-gray-700 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <h4 className="text-lg font-semibold text-white">{plan.name}</h4>
-              {currentPlan === plan.id && (
-                <span className="px-2 py-1 bg-enostics-blue/20 text-enostics-blue text-xs font-medium rounded-full">
-                  Current Plan
-                </span>
-              )}
-              {plan.popular && (
-                <span className="px-2 py-1 bg-enostics-green/20 text-enostics-green text-xs font-medium rounded-full">
-                  Popular
-                </span>
-              )}
-            </div>
-            <ul className="space-y-2">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex items-center gap-2 text-sm text-enostics-gray-300">
-                  <svg className="h-4 w-4 text-enostics-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      {/* Mobile Feature Note */}
+      <div className="lg:hidden">
+        <p className="text-sm text-gray-600 dark:text-gray-400 text-center italic">
+          View detailed feature comparison on desktop
+        </p>
       </div>
     </div>
   )

@@ -235,9 +235,9 @@ export default function BusinessPage() {
                 Start Free Trial
               </Button>
             </Link>
-            <Link href="/docs">
+            <Link href="/dashboard/endpoints">
               <Button variant="outline" className="border-enostics-gray-700 text-enostics-light hover:bg-enostics-gray-800">
-                View Documentation
+                View Endpoints
               </Button>
             </Link>
           </div>

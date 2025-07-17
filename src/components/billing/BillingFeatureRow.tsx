@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, X, Minus } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 
 interface Feature {
   label: string
@@ -20,14 +20,14 @@ export function BillingFeatureRow({ feature, isEven }: BillingFeatureRowProps) {
       if (value) {
         return (
           <Check 
-            className="h-5 w-5 text-enostics-green mx-auto" 
+            className="h-5 w-5 text-emerald-500 dark:text-emerald-400 mx-auto" 
             aria-label="Included"
           />
         )
       } else {
         return (
           <X 
-            className="h-5 w-5 text-enostics-gray-500 mx-auto" 
+            className="h-5 w-5 text-gray-400 dark:text-gray-500 mx-auto" 
             aria-label="Not included"
           />
         )
@@ -35,17 +35,15 @@ export function BillingFeatureRow({ feature, isEven }: BillingFeatureRowProps) {
     }
     
     return (
-      <span className="text-sm text-white font-medium">
+      <span className="text-sm text-gray-900 dark:text-white font-medium">
         {value}
       </span>
     )
   }
 
   return (
-    <div className={`grid grid-cols-4 gap-6 p-6 ${
-      isEven ? 'bg-enostics-gray-900/30' : 'bg-enostics-gray-800/30'
-    }`}>
-      <div className="text-sm font-medium text-white">
+    <div className="grid grid-cols-4 gap-6 p-6">
+      <div className="text-sm font-medium text-gray-900 dark:text-white">
         {feature.label}
       </div>
       <div className="text-center">

@@ -24,21 +24,29 @@ export function PlanCTAButton({ plan, isCurrentPlan, onPlanChange }: PlanCTAButt
 
   const getButtonText = () => {
     if (isCurrentPlan) return 'Current Plan'
+    
+    if (plan.popular && !isCurrentPlan) {
+      return `${plan.ctaText} • Most Popular`
+    }
+    
     return plan.ctaText
   }
 
   const getButtonClassName = () => {
-    const baseClass = 'w-full font-semibold transition-all duration-200'
+    const baseClass = 'w-full font-semibold transition-all duration-200 h-11'
     
     if (isCurrentPlan) {
-      return `${baseClass} border-enostics-blue text-enostics-blue cursor-default`
+      return `${baseClass} border-blue-500 dark:border-blue-400 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 cursor-default`
     }
     
     if (plan.ctaVariant === 'primary') {
-      return `${baseClass} bg-enostics-blue hover:bg-enostics-blue/90 text-white border-enostics-blue`
+      if (plan.popular) {
+        return `${baseClass} bg-emerald-500 dark:bg-emerald-600 hover:bg-emerald-600 dark:hover:bg-emerald-700 text-white border-emerald-500 dark:border-emerald-600`
+      }
+      return `${baseClass} bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white border-blue-500 dark:border-blue-600`
     }
     
-    return `${baseClass} border-enostics-gray-600 text-white hover:bg-enostics-gray-800 hover:border-enostics-gray-500`
+    return `${baseClass} border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-400 dark:hover:border-gray-500`
   }
 
   return (

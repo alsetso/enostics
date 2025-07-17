@@ -6,145 +6,97 @@ import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
 import { 
   Home,
-  Settings,
   Database,
   X,
-  LogOut,
-  User,
   Mail,
   BarChart3,
   Key,
   Globe,
-  ChevronDown,
-  ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
   Bot,
-  BookOpen,
   Workflow,
   Plug,
   Server,
-  Wrench
+  Wrench,
+  Activity
 } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { UpgradeModal } from '@/components/features/upgrade-modal'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
 
-// Main MVP navigation items
+// Main navigation items - now includes all features
 const mainNavigation = [
   { 
     name: 'Chat', 
     href: '/dashboard/chat', 
     icon: Bot, 
-    description: 'Chat with your AI models',
-    status: 'live'
+    description: 'Chat with your AI models'
   },
   { 
     name: 'Inbox', 
     href: '/dashboard', 
     icon: Mail, 
-    description: 'Your universal personal inbox',
-    status: 'live'
+    description: 'Your universal personal inbox'
   },
   { 
     name: 'Analytics', 
     href: '/dashboard/analytics', 
     icon: BarChart3, 
-    description: 'Real-time monitoring and insights',
-    status: 'live'
+    description: 'Real-time monitoring and insights'
   },
-]
-
-// Coming Soon features
-const comingSoonNavigation = [
   { 
     name: 'Endpoints', 
     href: '/dashboard/endpoints', 
     icon: Server, 
-    description: 'Manage your API endpoints',
-    locked: true
+    description: 'Manage your API endpoints'
   },
   { 
     name: 'Agents', 
     href: '/dashboard/agents', 
     icon: Bot, 
-    description: 'AI agent management',
-    locked: true
+    description: 'AI agent management'
   },
   { 
     name: 'Workflows', 
     href: '/dashboard/workflows', 
     icon: Workflow, 
-    description: 'Automate your processes',
-    locked: true
+    description: 'Automate your processes'
   },
   { 
-    name: 'Integrations', 
-    href: '/dashboard/integrations', 
-    icon: Plug, 
-    description: 'Connect external services',
-    locked: true
-  },
-  { 
-    name: 'API Keys', 
+    name: 'Keys', 
     href: '/dashboard/keys', 
     icon: Key, 
-    description: 'Manage authentication keys',
-    locked: true
+    description: 'Manage authentication keys'
   },
   { 
     name: 'Data', 
     href: '/dashboard/data', 
     icon: Database, 
-    description: 'View and manage your data',
-    locked: true
+    description: 'View and manage your data'
   },
   { 
     name: 'Business', 
     href: '/dashboard/business', 
     icon: Home, 
-    description: 'Multi-endpoint management',
-    locked: true
+    description: 'Multi-endpoint management'
   },
   { 
-    name: 'AI Tools', 
+    name: 'Tools', 
     href: '/dashboard/ai-tools', 
     icon: Wrench, 
-    description: 'Advanced AI utilities',
-    locked: true
+    description: 'Advanced AI utilities'
   },
   { 
     name: 'Domains', 
     href: '/dashboard/domains', 
     icon: Globe, 
-    description: 'Custom domain management',
-    locked: true
+    description: 'Custom domain management'
   },
 ]
 
-// Bottom navigation items
-const bottomNavigation = [
-  { 
-    name: 'Documentation', 
-    href: '/docs', 
-    icon: BookOpen, 
-    description: 'API documentation and guides'
-  },
-  { 
-    name: 'Profile', 
-    href: '/dashboard/profile', 
-    icon: User, 
-    description: 'Personal settings'
-  },
-  { 
-    name: 'Settings', 
-    href: '/dashboard/settings', 
-    icon: Settings, 
-    description: 'Account settings'
-  },
-]
+// Bottom navigation items - removed to simplify
+const bottomNavigation: any[] = []
 
 type SidebarState = 'collapsed' | 'default' | 'expanded'
 
@@ -161,15 +113,10 @@ export function EnhancedDashboardSidebar({
   onClose,
   onSidebarStateChange
 }: EnhancedDashboardSidebarProps) {
-  const [sidebarState, setSidebarState] = useState<SidebarState>('default')
+  const [sidebarState, setSidebarState] = useState<SidebarState>('collapsed')
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [userTier, setUserTier] = useState<'free' | 'developer' | 'business'>('free')
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [upgradeFeature, setUpgradeFeature] = useState<string>('')
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    comingSoon: false
-  })
 
   const pathname = usePathname()
   const supabase = createClientSupabaseClient()
@@ -204,6 +151,15 @@ export function EnhancedDashboardSidebar({
     }
   }, [supabase.auth])
 
+  const toggleSection = (section: string) => {
+    // No longer needed - removed coming soon sections
+  }
+
+  const handleSidebarStateChange = (newState: SidebarState) => {
+    setSidebarState(newState)
+    onSidebarStateChange?.(newState)
+  }
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -213,47 +169,36 @@ export function EnhancedDashboardSidebar({
     }
   }
 
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }))
-  }
-
-  const handleSidebarStateChange = (newState: SidebarState) => {
-    setSidebarState(newState)
-    onSidebarStateChange?.(newState)
-  }
-
   const getStatusIndicator = (status?: string) => {
-    if (!status) return null
-    
-    const statusColors = {
-      live: 'bg-green-500',
-      new: 'bg-blue-500',
-      beta: 'bg-orange-500',
-      active: 'bg-blue-500'
-    }
+    // Remove status indicators for Chat, Inbox, and Analytics
+    return null
+  }
 
-    return (
-      <div 
-        className={clsx(
-          'w-2 h-2 rounded-full',
-          statusColors[status as keyof typeof statusColors] || 'bg-gray-500'
-        )}
-      />
-    )
+  const handleMouseEnter = () => {
+    if (sidebarState === 'collapsed') {
+      handleSidebarStateChange('default')
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (sidebarState === 'default') {
+      handleSidebarStateChange('collapsed')
+    }
   }
 
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className={clsx(
-        'hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300',
-        sidebarState === 'collapsed' ? 'lg:w-16' : 
-        sidebarState === 'expanded' ? 'lg:w-80' : 'lg:w-64',
-        className
-      )}>
+      <div 
+        className={clsx(
+          'hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:flex-col transition-all duration-300',
+          sidebarState === 'collapsed' ? 'lg:w-16' : 
+          sidebarState === 'expanded' ? 'lg:w-80' : 'lg:w-64',
+          className
+        )}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-[hsl(var(--sidebar-bg))] border-r border-[hsl(var(--border-color))]">
           <SidebarContent
             user={user}
@@ -263,13 +208,7 @@ export function EnhancedDashboardSidebar({
             userTier={userTier}
             sidebarState={sidebarState}
             setSidebarState={handleSidebarStateChange}
-            expandedSections={expandedSections}
-            toggleSection={toggleSection}
             getStatusIndicator={getStatusIndicator}
-            onShowUpgrade={(feature) => {
-              setUpgradeFeature(feature)
-              setShowUpgradeModal(true)
-            }}
           />
         </div>
       </div>
@@ -301,76 +240,54 @@ export function EnhancedDashboardSidebar({
             userTier={userTier}
             sidebarState={sidebarState}
             setSidebarState={handleSidebarStateChange}
-            expandedSections={expandedSections}
-            toggleSection={toggleSection}
             getStatusIndicator={getStatusIndicator}
-            onShowUpgrade={(feature) => {
-              setUpgradeFeature(feature)
-              setShowUpgradeModal(true)
-            }}
             onClose={onClose}
           />
         </div>
       </div>
-
-      {/* Upgrade Modal */}
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        feature={upgradeFeature}
-      />
     </>
   )
 }
 
 interface SidebarContentProps {
-  user?: any
+  user: any
   pathname: string
   onSignOut: () => void
-  loading?: boolean
+  loading: boolean
   userTier: 'free' | 'developer' | 'business'
   sidebarState: SidebarState
   setSidebarState: (state: SidebarState) => void
-  expandedSections: Record<string, boolean>
-  toggleSection: (section: string) => void
   getStatusIndicator: (status?: string) => React.ReactNode
-  onShowUpgrade: (feature: string) => void
   onClose?: () => void
 }
 
-function SidebarContent({ 
-  user, 
-  pathname, 
-  onSignOut, 
-  loading = false,
+function SidebarContent({
+  user,
+  pathname,
+  onSignOut,
+  loading,
   userTier,
   sidebarState,
   setSidebarState,
-  expandedSections,
-  toggleSection,
   getStatusIndicator,
-  onShowUpgrade,
   onClose
 }: SidebarContentProps) {
   const isCollapsed = sidebarState === 'collapsed'
 
   const renderNavItem = (item: any, showBadge = true) => {
-    const isActive = pathname === item.href || 
-      (item.href === '/dashboard' && pathname === '/dashboard') ||
-      (item.href !== '/dashboard' && pathname.startsWith(item.href))
-
+    const isActive = pathname === item.href
+    
     return (
       <Link
         key={item.name}
         href={item.href}
         className={clsx(
-          'group flex items-center gap-x-3 rounded-lg p-2 text-sm font-medium transition-all duration-200 relative',
-          isActive
-            ? 'bg-[hsl(var(--hover-bg))] text-[hsl(var(--text-primary))]'
+          'flex items-center gap-x-3 rounded-lg p-2 text-sm font-medium transition-all duration-200',
+          isActive 
+            ? 'bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-text))]' 
             : 'text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--hover-bg))]',
           isCollapsed ? 'justify-center' : ''
         )}
-        title={isCollapsed ? item.description : undefined}
       >
         <div className="flex items-center gap-2">
           <item.icon className="h-5 w-5 shrink-0" />
@@ -387,87 +304,45 @@ function SidebarContent({
                 {item.status}
               </Badge>
             )}
-            {item.locked && (
-              <Badge 
-                variant="outline" 
-                className="text-xs px-1.5 py-0.5 border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20"
-              >
-                Soon
-              </Badge>
-            )}
           </>
         )}
       </Link>
     )
   }
 
-  const renderSection = (title: string, items: any[], sectionKey?: string) => {
-    const isExpanded = sectionKey ? expandedSections[sectionKey] : true
-    
-    return (
-      <div className="space-y-1">
-        {!isCollapsed && sectionKey && (
-          <button
-            onClick={() => toggleSection(sectionKey)}
-            className="flex items-center justify-between w-full p-2 text-xs font-semibold text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))] transition-colors"
-          >
-            <span>{title}</span>
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </button>
-        )}
-        {(isExpanded || isCollapsed) && (
-          <div className="space-y-1">
-            {items.map(item => renderNavItem(item))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border-color))]">
-        {!isCollapsed && (
-          <Link href="/dashboard">
-            <h1 className="text-lg font-bold text-[hsl(var(--text-primary))]">
-              enostics
-            </h1>
-          </Link>
-        )}
-        
-        <div className="flex items-center gap-1 ml-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarState(
-              sidebarState === 'collapsed' ? 'default' : 
-              sidebarState === 'default' ? 'expanded' : 'collapsed'
+      <div className="border-b border-[hsl(var(--border-color))]">
+        <div className="px-3 py-4">
+          <Link 
+            href="/" 
+            className={clsx(
+              'flex items-center gap-x-3 rounded-lg p-2 text-sm font-medium transition-all duration-200 hover:bg-[hsl(var(--hover-bg))] h-9',
+              isCollapsed ? 'justify-center' : ''
             )}
-            className="h-8 w-8 p-1 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--hover-bg))] hidden lg:flex"
           >
-            {sidebarState === 'collapsed' ? (
-              <PanelLeftOpen className="h-5 w-5" />
-            ) : (
-              <PanelLeftClose className="h-5 w-5" />
+            <img src="/enostics.png" alt="Enostics" className="h-5 w-5 shrink-0" />
+            {!isCollapsed && (
+              <h1 className="text-lg font-bold text-[hsl(var(--text-primary))]">
+                enostics
+              </h1>
             )}
-          </Button>
-          
-          {onClose && (
+          </Link>
+        </div>
+        
+        {onClose && (
+          <div className="absolute top-4 right-4 lg:hidden">
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-8 w-8 p-1 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--hover-bg))] lg:hidden"
+              className="h-8 w-8 p-1 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--hover-bg))]"
             >
               <X className="h-5 w-5" />
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
@@ -477,73 +352,33 @@ function SidebarContent({
           {mainNavigation.map(item => renderNavItem(item))}
         </div>
 
-        {/* Coming Soon Section */}
-        {renderSection('Coming Soon', comingSoonNavigation, 'comingSoon')}
-
         {/* Bottom Navigation */}
         {!isCollapsed && (
           <div className="space-y-1">
             {bottomNavigation.map(item => renderNavItem(item, false))}
           </div>
         )}
-
-        {/* Theme Toggle Section */}
-        {!isCollapsed && (
-          <div className="space-y-1">
-            <div className="p-2 text-xs font-semibold text-gray-400 dark:text-gray-400">
-              Appearance
-            </div>
-            <div className="flex items-center justify-between p-2 text-sm text-gray-300 dark:text-gray-300">
-              <span>Theme</span>
-              <ThemeToggle />
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* User section */}
-      <div className="border-t border-[hsl(var(--border-color))] p-4">
-        {loading ? (
-          <div className="animate-pulse">
-            <div className="h-10 bg-gray-700 rounded mb-2"></div>
-            <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+      {/* Usage section */}
+      <div className="border-t border-[hsl(var(--border-color))] px-3 py-4">
+        <Link 
+          href="/dashboard/usage"
+          className={clsx(
+            'flex items-center gap-x-3 rounded-lg p-2 text-sm font-medium transition-all duration-200',
+            pathname === '/dashboard/usage' 
+              ? 'bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-active-text))]' 
+              : 'text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--hover-bg))]',
+            isCollapsed ? 'justify-center' : ''
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 shrink-0" />
           </div>
-        ) : user ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-sm">
-              <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
-                {user.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              {!isCollapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-[hsl(var(--text-primary))] font-medium truncate">
-                    {user.email}
-                  </p>
-                  <p className="text-[hsl(var(--text-muted))] text-xs">
-                    {userTier} plan
-                  </p>
-                </div>
-              )}
-            </div>
-            {!isCollapsed && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onSignOut}
-                className="w-full justify-start gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </Button>
-            )}
-          </div>
-        ) : (
-          !isCollapsed && (
-            <div className="text-center text-gray-400">
-              <p className="text-sm">Not signed in</p>
-            </div>
-          )
-        )}
+          {!isCollapsed && (
+            <span className="flex-1">Usage</span>
+          )}
+        </Link>
       </div>
     </div>
   )

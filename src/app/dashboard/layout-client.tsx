@@ -19,19 +19,17 @@ const getPageTitle = (pathname: string) => {
     '/dashboard/endpoints': { title: 'Endpoints', subtitle: 'Manage your API endpoints' },
     '/dashboard/agents': { title: 'AI Agents', subtitle: 'Deploy intelligent agents on your endpoints' },
     '/dashboard/workflows': { title: 'Workflows', subtitle: 'Automate data processing with custom workflows' },
-    '/dashboard/integrations': { title: 'Integrations', subtitle: 'Connect with external services and platforms' },
     '/dashboard/business': { title: 'Business', subtitle: 'Multi-endpoint management' },
     '/dashboard/webhooks': { title: 'Webhooks', subtitle: 'Forward requests to external URLs' },
     '/dashboard/keys': { title: 'API Keys', subtitle: 'Manage authentication keys' },
     '/dashboard/data': { title: 'Data', subtitle: 'View and manage your data' },
     '/dashboard/ai-tools': { title: 'AI Tools', subtitle: 'Advanced AI-powered tools for data analysis' },
     '/dashboard/domains': { title: 'Custom Domains', subtitle: 'Use your own domain for endpoints' },
-    '/dashboard/playground': { title: 'Playground', subtitle: 'Test endpoints with custom payloads' },
     '/dashboard/profile': { title: 'Profile', subtitle: 'Personal information and settings' },
     '/dashboard/settings': { title: 'Settings', subtitle: 'Account and system settings' },
     '/dashboard/settings/billing': { title: 'Billing', subtitle: 'Subscription and payment settings' },
     '/dashboard/settings/email': { title: 'Email Settings', subtitle: 'Configure email preferences' },
-    '/dashboard/settings/usage': { title: 'Usage', subtitle: 'Monitor your usage and limits' }
+    '/dashboard/usage': { title: 'Usage', subtitle: 'Monitor your usage and limits' }
   }
 
   return routes[pathname] || { title: 'Dashboard', subtitle: undefined }

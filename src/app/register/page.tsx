@@ -21,6 +21,7 @@ import {
   Users,
   Building
 } from 'lucide-react'
+import Link from 'next/link'
 
 interface Plan {
   id: string
@@ -141,6 +142,9 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Prevent form submission during registration closure
+    return
+    
     if (!validateForm()) return
 
     setIsLoading(true)
@@ -172,14 +176,15 @@ export default function RegisterPage() {
       })
 
       if (error) {
-        if (error.message.includes('already registered')) {
+        const errorMessage = error.message || ''
+        if (errorMessage.includes('already registered')) {
           setErrors({ email: 'This email is already registered. Try signing in instead.' })
-        } else if (error.message.includes('invalid email')) {
+        } else if (errorMessage.includes('invalid email')) {
           setErrors({ email: 'Please enter a valid email address.' })
-        } else if (error.message.includes('password')) {
+        } else if (errorMessage.includes('password')) {
           setErrors({ password: 'Password must be at least 8 characters long.' })
         } else {
-          setErrors({ general: error.message })
+          setErrors({ general: errorMessage || 'An error occurred' })
         }
       } else {
         setRegistrationEmail(formData.email)
@@ -239,32 +244,10 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-enostics-gray-950 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-lg">
-        {/* Progress Indicator */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            {[1, 2, 3, 4].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 ${
-                  step <= currentStep 
-                    ? 'bg-brand text-white' 
-                    : 'bg-enostics-gray-800 text-enostics-gray-400'
-                }`}>
-                  {step < currentStep ? <Check className="h-4 w-4" /> : step}
-                </div>
-                {step < 4 && (
-                  <div className={`w-12 h-0.5 mx-2 transition-all duration-200 ${
-                    step < currentStep ? 'bg-brand' : 'bg-enostics-gray-800'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-enostics-gray-400">
-              Step {currentStep} of 4
-            </p>
-          </div>
+      <div className="w-full max-w-lg space-y-6">
+        {/* Logo */}
+        <div className="flex justify-center">
+          <img src="/enostics.png" alt="Enostics" className="h-8 w-8" />
         </div>
 
         <Card variant="glass" className="min-h-[500px]">
@@ -275,7 +258,7 @@ export default function RegisterPage() {
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div className="text-center">
-                    <h1 className="text-3xl font-bold text-white mb-4">
+                    <h1 className="text-3xl font-bold text-white mb-4 mt-4">
                       Welcome to Enostics
                     </h1>
                     <p className="text-lg text-enostics-gray-300">
@@ -286,7 +269,7 @@ export default function RegisterPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {benefits.map((benefit, index) => (
                       <div key={index} className="flex flex-col items-center text-center p-4 bg-enostics-gray-900/50 rounded-xl border border-enostics-gray-700/50">
-                        <div className="p-2 bg-brand/10 border border-brand/20 rounded-lg text-brand mb-3">
+                        <div className="p-2 bg-enostics-green/10 border border-enostics-green/20 rounded-lg text-enostics-green mb-3">
                           {benefit.icon}
                         </div>
                         <div>
@@ -303,7 +286,7 @@ export default function RegisterPage() {
 
                   <Button 
                     onClick={nextStep}
-                    className="w-full"
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium transition-all duration-200 hover:scale-105 shadow-lg"
                     size="lg"
                   >
                     Get Started
@@ -331,13 +314,13 @@ export default function RegisterPage() {
                         onClick={() => setSelectedPlan(plan.id)}
                         className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                           selectedPlan === plan.id
-                            ? 'border-brand bg-brand/5 ring-2 ring-brand/20'
+                            ? 'border-enostics-green bg-enostics-green/5 ring-2 ring-enostics-green/20'
                             : 'border-enostics-gray-700/50 bg-enostics-gray-900/50 hover:border-enostics-gray-600/50'
                         }`}
                       >
                         {plan.popular && (
                           <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                            <span className="px-3 py-1 bg-brand text-white text-xs font-medium rounded-full">
+                            <span className="px-3 py-1 bg-enostics-green text-white text-xs font-medium rounded-full">
                               Most Popular
                             </span>
                           </div>
@@ -345,7 +328,7 @@ export default function RegisterPage() {
                         
                         <div className="flex items-start gap-4">
                           <div className={`p-2 rounded-lg ${
-                            selectedPlan === plan.id ? 'bg-brand/20 text-brand' : 'bg-enostics-gray-800 text-enostics-gray-400'
+                            selectedPlan === plan.id ? 'bg-enostics-green/20 text-enostics-green' : 'bg-enostics-gray-800 text-enostics-gray-400'
                           }`}>
                             {plan.icon}
                           </div>
@@ -381,7 +364,7 @@ export default function RegisterPage() {
                           
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                             selectedPlan === plan.id
-                              ? 'border-brand bg-brand'
+                              ? 'border-enostics-green bg-enostics-green'
                               : 'border-enostics-gray-600'
                           }`}>
                             {selectedPlan === plan.id && (
@@ -398,14 +381,14 @@ export default function RegisterPage() {
                       type="button"
                       variant="outline"
                       onClick={prevStep}
-                      className="flex-1"
+                      className="flex-1 border-green-600 text-green-400 hover:bg-green-600/10 hover:text-green-300 hover:border-green-500"
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Back
                     </Button>
                     <Button
                       onClick={nextStep}
-                      className="flex-1"
+                      className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium transition-all duration-200 hover:scale-105 shadow-lg"
                     >
                       Continue
                       <ArrowRight className="h-4 w-4 ml-2" />
@@ -426,6 +409,13 @@ export default function RegisterPage() {
                     </p>
                   </div>
 
+                  {/* Registration Opening Soon Banner */}
+                  <div className="bg-enostics-amber/10 border border-enostics-amber/20 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-enostics-amber text-center font-medium">
+                      Registration Opening Soon
+                    </p>
+                  </div>
+
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label htmlFor="username" className="block text-sm font-medium text-white mb-2">
@@ -439,10 +429,11 @@ export default function RegisterPage() {
                           value={formData.username}
                           onChange={handleInputChange}
                           placeholder="your-username"
-                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                          disabled
+                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 opacity-50 cursor-not-allowed ${
                             errors.username 
                               ? 'border-enostics-red focus:ring-enostics-red/50' 
-                              : 'border-enostics-gray-700 focus:ring-brand/50 focus:border-brand'
+                              : 'border-enostics-gray-700 focus:ring-enostics-green/50 focus:border-enostics-green'
                           }`}
                         />
                         <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-enostics-gray-400" />
@@ -467,10 +458,11 @@ export default function RegisterPage() {
                           value={formData.email}
                           onChange={handleInputChange}
                           placeholder="you@example.com"
-                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                          disabled
+                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 opacity-50 cursor-not-allowed ${
                             errors.email 
                               ? 'border-enostics-red focus:ring-enostics-red/50' 
-                              : 'border-enostics-gray-700 focus:ring-brand/50 focus:border-brand'
+                              : 'border-enostics-gray-700 focus:ring-enostics-green/50 focus:border-enostics-green'
                           }`}
                         />
                         <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-enostics-gray-400" />
@@ -492,10 +484,11 @@ export default function RegisterPage() {
                           value={formData.password}
                           onChange={handleInputChange}
                           placeholder="••••••••"
-                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                          disabled
+                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 opacity-50 cursor-not-allowed ${
                             errors.password 
                               ? 'border-enostics-red focus:ring-enostics-red/50' 
-                              : 'border-enostics-gray-700 focus:ring-brand/50 focus:border-brand'
+                              : 'border-enostics-gray-700 focus:ring-enostics-green/50 focus:border-enostics-green'
                           }`}
                         />
                         <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-enostics-gray-400" />
@@ -517,10 +510,11 @@ export default function RegisterPage() {
                           value={formData.confirmPassword}
                           onChange={handleInputChange}
                           placeholder="••••••••"
-                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 ${
+                          disabled
+                          className={`w-full px-4 py-3 pl-12 bg-enostics-gray-900 border rounded-lg text-white placeholder-enostics-gray-500 focus:outline-none focus:ring-2 transition-all duration-200 opacity-50 cursor-not-allowed ${
                             errors.confirmPassword 
                               ? 'border-enostics-red focus:ring-enostics-red/50' 
-                              : 'border-enostics-gray-700 focus:ring-brand/50 focus:border-brand'
+                              : 'border-enostics-gray-700 focus:ring-enostics-green/50 focus:border-enostics-green'
                           }`}
                         />
                         <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-enostics-gray-400" />
@@ -541,30 +535,49 @@ export default function RegisterPage() {
                         type="button"
                         variant="outline"
                         onClick={prevStep}
-                        className="flex-1"
+                        className="flex-1 border-green-600 text-green-400 hover:bg-green-600/10 hover:text-green-300 hover:border-green-500"
                       >
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back
                       </Button>
                       <Button
                         type="submit"
-                        className="flex-1"
-                        loading={isLoading}
+                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium py-3 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg opacity-50 cursor-not-allowed"
+                        disabled={true}
                       >
-                        Create Account
-                        <ArrowRight className="h-4 w-4 ml-2" />
+                        Registration Opening Soon
                       </Button>
                     </div>
                   </form>
 
-                  <div className="text-center text-sm pt-4 border-t border-enostics-gray-800/50">
-                    <span className="text-enostics-gray-400">Already have an account? </span>
-                    <button
-                      onClick={() => router.push('/login')}
-                      className="text-brand hover:text-brand-light transition-colors"
-                    >
-                      Sign in
-                    </button>
+                  <div className="text-center text-sm space-y-2">
+                    <div>
+                      <span className="text-enostics-gray-400">
+                        Already have an account?{' '}
+                      </span>
+                      <Link
+                        href="/login"
+                        className="text-green-400 hover:text-green-300 transition-colors duration-200"
+                      >
+                        Sign In
+                      </Link>
+                    </div>
+                    <div className="text-enostics-gray-500">
+                      By registering, you agree to our{' '}
+                      <Link
+                        href="/terms-of-use"
+                        className="text-green-400 hover:text-green-300 transition-colors duration-200"
+                      >
+                        Terms
+                      </Link>
+                      {' and '}
+                      <Link
+                        href="/privacy-policy"
+                        className="text-green-400 hover:text-green-300 transition-colors duration-200"
+                      >
+                        Privacy Policy
+                      </Link>
+                    </div>
                   </div>
                 </div>
               )}
@@ -585,7 +598,7 @@ export default function RegisterPage() {
                     <p className="text-enostics-gray-300 mb-2">
                       We've sent a confirmation link to:
                     </p>
-                    <p className="text-brand font-medium mb-6">
+                    <p className="text-enostics-green font-medium mb-6">
                       {registrationEmail}
                     </p>
                     <p className="text-sm text-enostics-gray-400">
@@ -596,7 +609,7 @@ export default function RegisterPage() {
                   <div className="space-y-3">
                     <Button
                       onClick={() => router.push('/login')}
-                      className="w-full"
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium transition-all duration-200 hover:scale-105 shadow-lg"
                       size="lg"
                     >
                       Go to Sign In
@@ -606,13 +619,25 @@ export default function RegisterPage() {
                     <Button
                       variant="ghost"
                       onClick={() => setCurrentStep(3)}
-                      className="w-full text-enostics-gray-400 hover:text-white"
+                      className="w-full text-green-400 hover:text-green-300 hover:bg-green-600/10"
                     >
                       Didn't receive the email? Try again
                     </Button>
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Carousel Dots */}
+            <div className="flex justify-center mt-8">
+              {[1, 2, 3, 4].map((step) => (
+                <span
+                  key={`dot-${step}`}
+                  className={`mx-1 h-2 w-2 rounded-full transition-colors duration-200 ${
+                    currentStep === step ? 'bg-enostics-green' : 'bg-enostics-gray-700'
+                  }`}
+                />
+              ))}
             </div>
           </CardContent>
         </Card>

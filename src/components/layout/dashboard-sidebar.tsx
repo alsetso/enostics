@@ -6,24 +6,13 @@ import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
 import { 
   Home,
-  Settings,
   Database,
-  Activity,
-  Plus,
-  Menu,
   X,
-  LogOut,
-  User,
   Mail,
   BarChart3,
   Play,
   Webhook,
   Key,
-  Globe,
-  FileText,
-  Lock,
-  ChevronDown,
-  ChevronRight,
   Sparkles,
   MessageCircle
 } from 'lucide-react'
@@ -31,20 +20,16 @@ import { createClientSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { UpgradeModal } from '@/components/features/upgrade-modal'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
 
-// Simplified navigation - all features available to everyone
+// Simplified navigation - core features only
 const navigation = [
   { name: 'Inbox', href: '/dashboard', icon: Mail, description: 'Your universal personal inbox for receiving data' },
-  { name: 'Chat', href: '/dashboard/chat', icon: MessageCircle, description: 'Chat with your local AI models', badge: 'AI' },
+  { name: 'Chat', href: '/dashboard/chat', icon: MessageCircle, description: 'Chat with your local AI models' },
   { name: 'Business', href: '/dashboard/business', icon: Home, description: 'Multi-endpoint management and business features' },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, description: 'Real-time monitoring and performance metrics' },
   { name: 'Webhooks', href: '/dashboard/webhooks', icon: Webhook, description: 'Forward requests to external URLs' },
   { name: 'API Keys', href: '/dashboard/keys', icon: Key, description: 'Manage authentication keys' },
   { name: 'Data', href: '/dashboard/data', icon: Database, description: 'View and manage your data' },
-  { name: 'Playground', href: '/dashboard/playground', icon: Play, description: 'Test endpoints with custom payloads' },
-  { name: 'Profile', href: '/dashboard/profile', icon: User, description: 'Personal information and settings' },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings, description: 'Account and system settings' },
 ]
 
 interface DashboardSidebarProps {
@@ -288,14 +273,14 @@ function SidebarContent({
       {/* Header - Fixed at top */}
       <div className="flex items-center justify-between p-6 pt-6 border-b border-enostics-gray-800 dark:border-gray-800 light:border-gray-200">
         <div className="flex items-center">
-          <Link href="/dashboard" onClick={onClose}>
+          <Link href="/" onClick={onClose} className="flex items-center gap-2">
+            <img src="/enostics.png" alt="Enostics" className="h-6 w-6" />
             <h1 className="text-xl font-bold text-white dark:text-white light:text-gray-900 hover:text-enostics-blue transition-colors">
               enostics
             </h1>
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           {onClose && (
             <button
               type="button"
@@ -309,19 +294,7 @@ function SidebarContent({
       </div>
 
       {/* Quick actions */}
-      <div className="p-6 pb-4 space-y-2">
-        <Button 
-          variant="outline"
-          className="w-full justify-start gap-2 border-enostics-blue text-enostics-blue hover:bg-enostics-blue hover:text-white" 
-          onClick={() => {
-            onShowUpgrade('Premium Features')
-            onClose?.()
-          }}
-        >
-          <Sparkles className="h-4 w-4" />
-          Upgrade
-        </Button>
-      </div>
+      {/* Removed all quick action buttons for Upgrade/View Plans */}
 
       {/* Navigation - Scrollable middle section */}
       <nav className="flex-1 px-6 overflow-y-auto">
@@ -390,43 +363,23 @@ function SidebarContent({
         </ul>
       </nav>
 
-      {/* User section - Fixed at bottom */}
-      <div className="border-t border-enostics-gray-800 dark:border-gray-800 light:border-gray-200 p-6">
-        {loading ? (
-          <div className="animate-pulse">
-            <div className="h-10 bg-enostics-gray-700 rounded mb-2"></div>
-            <div className="h-4 bg-enostics-gray-700 rounded w-3/4"></div>
-          </div>
-        ) : user ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-sm">
-              <div className="h-8 w-8 bg-enostics-blue rounded-full flex items-center justify-center text-white font-medium">
-                {user.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white dark:text-white light:text-gray-900 font-medium truncate">
-                  {user.email}
-                </p>
-                <p className="text-enostics-gray-400 dark:text-gray-400 light:text-gray-500 text-xs">
-                  Active user
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSignOut}
-              className="w-full justify-start gap-2 text-enostics-gray-300 border-enostics-gray-600 hover:bg-enostics-gray-800 hover:text-white"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
-        ) : (
-          <div className="text-center text-enostics-gray-400">
-            <p className="text-sm">Not signed in</p>
-          </div>
-        )}
+      {/* Bottom section - Beta button and Enostics info */}
+      <div className="border-t border-enostics-gray-800 dark:border-gray-800 light:border-gray-200 p-6 flex flex-col gap-4">
+        <Link href="/beta" passHref legacyBehavior>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start gap-2 text-enostics-blue border-enostics-blue hover:bg-enostics-blue hover:text-white transition-colors"
+        >
+          <Sparkles className="h-4 w-4" />
+            Beta
+        </Button>
+        </Link>
+        <div className="mt-4 text-xs text-enostics-gray-400 leading-snug select-none">
+          <div className="font-bold text-enostics-blue mb-1">enostics</div>
+          <div className="mb-1">v.1.0.0.1</div>
+          <div>The system by which a person receives, processes, and store intelligent data through a personal interface</div>
+        </div>
       </div>
     </div>
   )

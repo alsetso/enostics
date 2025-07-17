@@ -39,9 +39,14 @@ import {
   Calendar,
   Filter,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Play,
+  Pause,
+  Plus,
+  Settings
 } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
+import DataProcessorPanel from './data-processor-panel'
 
 interface EnhancedDataRecord {
   id: string
@@ -81,7 +86,7 @@ interface SmartAction {
   id: string
   title: string
   description: string
-  action_type: 'export' | 'integrate' | 'analyze' | 'notify'
+  action_type: 'export' | 'integrate' | 'analyze' | 'notify' | 'process'
   icon: React.ReactNode
   priority: 'high' | 'medium' | 'low'
 }
@@ -104,6 +109,12 @@ export default function EnhancedDataModal({
   const [userCategory, setUserCategory] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Enhanced Data Modal - Active Tab:', activeTab)
+    console.log('Enhanced Data Modal - Record:', record)
+  }, [activeTab, record])
   
   // New state for enhanced features
   const [relatedRecords, setRelatedRecords] = useState<RelatedRecord[]>([])
@@ -112,6 +123,8 @@ export default function EnhancedDataModal({
   const [loadingRelated, setLoadingRelated] = useState(false)
   const [loadingTrends, setLoadingTrends] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [processorItems, setProcessorItems] = useState<any[]>([])
+  const [loadingProcessor, setLoadingProcessor] = useState(false)
 
   useEffect(() => {
     if (record) {
@@ -119,6 +132,7 @@ export default function EnhancedDataModal({
       setUserCategory(record.user_category || '')
       fetchRelatedRecords()
       fetchTrendData()
+      fetchProcessorStatus()
       generateSmartActions()
     }
   }, [record])
@@ -170,6 +184,16 @@ export default function EnhancedDataModal({
     if (!record) return
 
     const actions: SmartAction[] = []
+
+    // Data Processor action - always first priority
+    actions.push({
+      id: 'add-to-processor',
+      title: 'Add to Data Processor',
+      description: 'Queue this data for intelligent AI processing and analysis',
+      action_type: 'process',
+      icon: <Brain className="w-4 h-4" />,
+      priority: 'high'
+    })
 
     // Export actions
     actions.push({
@@ -229,7 +253,40 @@ export default function EnhancedDataModal({
     setSmartActions(actions)
   }
 
-
+  const fetchProcessorStatus = async () => {
+    if (!record) return
+    
+    setLoadingProcessor(true)
+    try {
+      // Check if this record is in the processor queue
+      const supabase = createClientSupabaseClient()
+      const { data: processorData } = await supabase
+        .from('enostics_data_processor')
+        .select('*')
+        .eq('source_record_id', record.id)
+        .order('created_at', { ascending: false })
+      
+      setProcessorItems(processorData || [])
+    } catch (error) {
+      console.error('Error fetching processor status:', error)
+      // Fallback to mock data for demonstration
+      setProcessorItems([
+        {
+          id: 'proc_' + record.id,
+          source_record_id: record.id,
+          status: 'pending',
+          processing_plan: 'health_data_analysis',
+          priority: 'medium',
+          created_at: new Date().toISOString(),
+          ai_model: 'gpt-4o-mini',
+          estimated_cost: 0.002,
+          progress_percentage: 0
+        }
+      ])
+    } finally {
+      setLoadingProcessor(false)
+    }
+  }
 
   const handleExportPDF = async () => {
     setIsExporting(true)
@@ -247,6 +304,9 @@ export default function EnhancedDataModal({
 
   const handleSmartAction = async (action: SmartAction) => {
     switch (action.id) {
+      case 'add-to-processor':
+        await handleAddToProcessor()
+        break
       case 'export-pdf':
         await handleExportPDF()
         break
@@ -256,6 +316,64 @@ export default function EnhancedDataModal({
         break
       default:
         console.log('Executing action:', action.id)
+    }
+  }
+
+  const handleAddToProcessor = async () => {
+    if (!record) return
+
+    try {
+      setIsSaving(true)
+      
+      // Determine processing plan based on data characteristics
+      let processing_plan = 'auto_basic'
+      let priority = 5
+      
+      if (record.sensitive_data) {
+        processing_plan = 'auto_advanced'
+        priority = 2 // High priority for sensitive data
+      } else if (record.business_context === 'healthcare' || record.business_context === 'finance') {
+        processing_plan = 'auto_advanced'
+        priority = 3
+      } else if (record.data_quality_score && record.data_quality_score > 80) {
+        processing_plan = 'auto_advanced'
+        priority = 4
+      }
+
+      const response = await fetch('/api/data-processor/queue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          source_data_id: record.id,
+          processing_plan,
+          priority,
+          business_domain: record.business_context,
+          auto_tags: record.auto_tags || [],
+          user_instructions: `Added from inbox: ${record.user_notes || 'No specific instructions'}`
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Successfully added to processor queue:', data.queue_item)
+        
+        // Show success feedback (you could add a toast notification here)
+        alert('✅ Successfully added to Data Processor queue!')
+        
+        // Optionally close the modal
+        onClose()
+      } else {
+        const errorData = await response.json()
+        console.error('Failed to add to processor:', errorData)
+        alert('❌ Failed to add to processor. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error adding to processor:', error)
+      alert('❌ Error adding to processor. Please try again.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -357,6 +475,12 @@ export default function EnhancedDataModal({
             label="Trends" 
             isActive={activeTab === 'trends'} 
             onClick={() => setActiveTab('trends')} 
+          />
+          <TabButton 
+            id="processor" 
+            label="Data Processor" 
+            isActive={activeTab === 'processor'} 
+            onClick={() => setActiveTab('processor')} 
           />
           <TabButton 
             id="actions" 
@@ -696,6 +820,175 @@ export default function EnhancedDataModal({
                       <p className="text-sm text-gray-500">No related records found</p>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Data Processor Tab */}
+          {activeTab === 'processor' && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-purple-400" />
+                    Processing Queue Status
+                    {loadingProcessor && <RefreshCw className="w-3 h-3 animate-spin" />}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {processorItems.length > 0 ? (
+                    <div className="space-y-4">
+                      {processorItems.map((item) => (
+                        <div key={item.id} className="p-4 border rounded-lg space-y-3">
+                          {/* Status Header */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  item.status === 'completed' ? 'border-green-500 text-green-700 bg-green-50' :
+                                  item.status === 'processing' ? 'border-blue-500 text-blue-700 bg-blue-50' :
+                                  item.status === 'failed' ? 'border-red-500 text-red-700 bg-red-50' :
+                                  'border-yellow-500 text-yellow-700 bg-yellow-50'
+                                }`}
+                              >
+                                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                {item.processing_plan?.replace('_', ' ') || 'Auto Basic'}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {item.priority && (
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    item.priority <= 2 ? 'border-red-500 text-red-700' :
+                                    item.priority <= 4 ? 'border-yellow-500 text-yellow-700' :
+                                    'border-green-500 text-green-700'
+                                  }`}
+                                >
+                                  {item.priority <= 2 ? 'High' : item.priority <= 4 ? 'Medium' : 'Low'} Priority
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          {item.progress_percentage !== undefined && (
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs text-gray-600">
+                                <span>Progress</span>
+                                <span>{item.progress_percentage}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${item.progress_percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Details */}
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <span className="text-gray-600">AI Model:</span>
+                              <span className="ml-2 font-medium">{item.ai_model || 'gpt-4o-mini'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Est. Cost:</span>
+                              <span className="ml-2 font-medium">${(item.estimated_cost || 0).toFixed(4)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Created:</span>
+                              <span className="ml-2 font-medium">
+                                {new Date(item.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Queue ID:</span>
+                              <span className="ml-2 font-mono text-xs">{item.id.slice(0, 8)}...</span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 pt-2 border-t">
+                            {item.status === 'pending' && (
+                              <>
+                                <Button size="sm" variant="outline" className="h-7 text-xs">
+                                  <Play className="w-3 h-3 mr-1" />
+                                  Start
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 text-xs">
+                                  <Settings className="w-3 h-3 mr-1" />
+                                  Configure
+                                </Button>
+                              </>
+                            )}
+                            {item.status === 'processing' && (
+                              <Button size="sm" variant="outline" className="h-7 text-xs">
+                                <Pause className="w-3 h-3 mr-1" />
+                                Pause
+                              </Button>
+                            )}
+                            {item.status === 'completed' && (
+                              <Button size="sm" variant="outline" className="h-7 text-xs">
+                                <Download className="w-3 h-3 mr-1" />
+                                Results
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600">
+                              <X className="w-3 h-3 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Quick Actions */}
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-medium text-sm mb-3">Quick Actions</h4>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="h-7 text-xs">
+                            <Plus className="w-3 h-3 mr-1" />
+                            Add to Queue
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs">
+                            <Brain className="w-3 h-3 mr-1" />
+                            Auto-Process
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs">
+                            <Settings className="w-3 h-3 mr-1" />
+                            Manage Queue
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Brain className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 mb-3">This record is not in the processing queue</p>
+                      <Button size="sm" onClick={handleAddToProcessor} className="text-xs">
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add to Processor Queue
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Universal Data Processor Panel */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-purple-400" />
+                    Universal Data Processor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <DataProcessorPanel />
                 </CardContent>
               </Card>
             </div>

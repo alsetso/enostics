@@ -66,13 +66,11 @@ export function GlobalNavbar({
         { href: '/dashboard', label: 'Dashboard', active: pathname === '/dashboard' },
         { href: '/dashboard/data', label: 'Data', active: pathname.startsWith('/dashboard/data') },
         { href: '/dashboard/analytics', label: 'Analytics', active: pathname.startsWith('/dashboard/analytics') },
-        { href: '/docs', label: 'Documentation', active: pathname.startsWith('/docs') },
       ]
     }
     
     return [
-      { href: '/playground', label: 'Playground', active: pathname.startsWith('/playground') },
-      { href: '/docs', label: 'Documentation', active: pathname.startsWith('/docs') },
+      // Removed playground and docs references as they are deleted
     ]
   }
 
@@ -120,7 +118,7 @@ export function GlobalNavbar({
           {/* Logo */}
           <div className="flex items-center">
             <Link href={logoHref} className="flex items-center space-x-2">
-              <Activity className="h-8 w-8 text-enostics-blue" />
+              <img src="/enostics.png" alt="Enostics" className="h-8 w-8" />
               <span className="text-xl font-bold text-white">
                 Enostics
               </span>

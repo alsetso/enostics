@@ -81,21 +81,14 @@ const comingSoonNavigation = [
     href: '/dashboard/workflows', 
     icon: Workflow, 
     description: 'Automate your processes',
-    locked: true
+    status: 'coming-soon'
   },
   { 
-    name: 'Integrations', 
-    href: '/dashboard/integrations', 
-    icon: Plug, 
-    description: 'Connect external services',
-    locked: true
-  },
-  { 
-    name: 'API Keys', 
+    name: 'Keys', 
     href: '/dashboard/keys', 
     icon: Key, 
     description: 'Manage authentication keys',
-    locked: true
+    status: 'live'
   },
   { 
     name: 'Data', 

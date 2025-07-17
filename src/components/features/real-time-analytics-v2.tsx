@@ -6,7 +6,8 @@ import { HealthBadge, useEndpointHealth } from '@/components/ui/health-badge'
 import { StatusIndicator } from '@/components/ui/dashboard-tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BarChart3, Activity, Clock, AlertTriangle, CheckCircle, XCircle, Globe } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart3, Activity, Clock, AlertTriangle, CheckCircle, XCircle, Globe, Eye, ExternalLink } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
 
 interface RequestLog {
@@ -115,6 +116,23 @@ export function RealTimeAnalyticsV2({ endpointId, endpointName }: RealTimeAnalyt
     return <XCircle className="h-4 w-4 text-red-400" />
   }
 
+  const getStatusColor = (statusCode: number) => {
+    if (statusCode >= 200 && statusCode < 300) return 'text-green-400'
+    if (statusCode >= 400 && statusCode < 500) return 'text-yellow-400'
+    return 'text-red-400'
+  }
+
+  const getMethodColor = (method: string) => {
+    const colors: Record<string, string> = {
+      'GET': 'text-blue-400 bg-blue-400/10',
+      'POST': 'text-green-400 bg-green-400/10',
+      'PUT': 'text-orange-400 bg-orange-400/10',
+      'DELETE': 'text-red-400 bg-red-400/10',
+      'PATCH': 'text-purple-400 bg-purple-400/10'
+    }
+    return colors[method] || 'text-gray-400 bg-gray-400/10'
+  }
+
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString()
   }
@@ -125,11 +143,22 @@ export function RealTimeAnalyticsV2({ endpointId, endpointName }: RealTimeAnalyt
     return `${(ms / 1000).toFixed(2)}s`
   }
 
+  const formatRelativeTime = (timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000)
+    
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+    return `${Math.floor(diffInSeconds / 86400)}d ago`
+  }
+
   return (
     <div className="space-y-6">
       {/* Analytics Overview */}
       <DashboardPanel
-        title={`Analytics - ${endpointName}`}
+        title={`${endpointName} Analytics`}
         subtitle="Real-time performance metrics and request monitoring"
         icon={<BarChart3 className="h-5 w-5" />}
         badge={
@@ -161,33 +190,46 @@ export function RealTimeAnalyticsV2({ endpointId, endpointName }: RealTimeAnalyt
         lastUpdated={lastUpdated}
         loading={loading}
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-white mb-1">{analytics.totalRequests.toLocaleString()}</div>
-            <div className="text-sm text-enostics-gray-400">Total Requests</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-400 mb-1">{analytics.successRequests.toLocaleString()}</div>
-            <div className="text-sm text-enostics-gray-400">Successful</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-red-400 mb-1">{analytics.errorRequests.toLocaleString()}</div>
-            <div className="text-sm text-enostics-gray-400">Errors</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-400 mb-1">{analytics.averageResponseTime}ms</div>
-            <div className="text-sm text-enostics-gray-400">Avg Response</div>
-          </div>
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Card className="bg-enostics-gray-900/50 border-enostics-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-white mb-1">{analytics.totalRequests.toLocaleString()}</div>
+              <div className="text-sm text-enostics-gray-400">Total Requests</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-enostics-gray-900/50 border-enostics-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-400 mb-1">{analytics.successRequests.toLocaleString()}</div>
+              <div className="text-sm text-enostics-gray-400">Successful</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-enostics-gray-900/50 border-enostics-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-red-400 mb-1">{analytics.errorRequests.toLocaleString()}</div>
+              <div className="text-sm text-enostics-gray-400">Errors</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-enostics-gray-900/50 border-enostics-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-blue-400 mb-1">{analytics.averageResponseTime}ms</div>
+              <div className="text-sm text-enostics-gray-400">Avg Response</div>
+            </CardContent>
+          </Card>
         </div>
 
+        {/* Top Errors */}
         {analytics.topErrors.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-white mb-4">Top Errors</h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {analytics.topErrors.map((error, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-enostics-gray-900/50 rounded-lg border border-red-500/20">
                   <span className="text-red-400 text-sm font-mono truncate flex-1 mr-4">{error.error}</span>
-                  <Badge variant="destructive">{error.count}</Badge>
+                  <Badge variant="destructive" className="text-xs">{error.count}</Badge>
                 </div>
               ))}
             </div>
@@ -196,63 +238,104 @@ export function RealTimeAnalyticsV2({ endpointId, endpointName }: RealTimeAnalyt
       </DashboardPanel>
 
       {/* Real-time Request Logs */}
-      <DataPanel
+      <DashboardPanel
         title="Recent Requests"
-        subtitle={`Live request stream (${logs.length} shown)`}
-        icon={<Clock className="h-5 w-5" />}
-        data={logs}
-        emptyMessage="No requests yet. Send some data to see real-time logs!"
-        emptyIcon={<Globe className="h-16 w-16 text-enostics-gray-600" />}
-        lastUpdated={lastUpdated}
+        subtitle={`${logs.length} most recent API requests`}
+        icon={<Activity className="h-5 w-5" />}
+        badge={{
+          text: isRealTime ? "Live" : "Updated " + formatRelativeTime(lastUpdated.toISOString()),
+          variant: isRealTime ? "success" : "outline"
+        }}
+        loading={loading}
       >
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {logs.map((log) => (
-            <div
-              key={log.id}
-              className="flex items-center justify-between p-4 bg-enostics-gray-900/50 rounded-lg border border-enostics-gray-800 hover:border-enostics-gray-700 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                {getStatusIcon(log.status_code)}
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {log.method}
+        {logs.length === 0 ? (
+          <div className="text-center py-12 text-enostics-gray-400">
+            <Activity className="h-16 w-16 mx-auto mb-4 text-enostics-gray-600" />
+            <h3 className="text-lg font-medium mb-2">No Requests Yet</h3>
+            <p className="text-sm">Requests will appear here once your endpoint receives traffic.</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {logs.map((log) => (
+              <div
+                key={log.id}
+                className="group flex items-center gap-4 p-3 rounded-lg border border-enostics-gray-800 bg-enostics-gray-950/50 hover:bg-enostics-gray-900/50 transition-all duration-200"
+              >
+                {/* Method Badge */}
+                <div className={`px-2 py-1 rounded text-xs font-mono ${getMethodColor(log.method)}`}>
+                  {log.method}
+                </div>
+
+                {/* Status */}
+                <div className="flex items-center gap-2 min-w-20">
+                  {getStatusIcon(log.status_code)}
+                  <span className={`text-sm font-medium ${getStatusColor(log.status_code)}`}>
+                    {log.status_code}
+                  </span>
+                </div>
+
+                {/* Response Time */}
+                <div className="min-w-20">
+                  <span className="text-sm text-blue-400 font-medium">
+                    {formatDuration(log.response_time_ms)}
+                  </span>
+                </div>
+
+                {/* Source IP */}
+                <div className="min-w-32 flex-1">
+                  <span className="text-sm text-enostics-gray-300">
+                    {log.source_ip || 'Unknown IP'}
+                  </span>
+                </div>
+
+                {/* Webhook Status */}
+                <div className="min-w-20">
+                  {log.webhook_sent ? (
+                    <Badge 
+                      variant={log.webhook_status === 200 ? "success" : "destructive"} 
+                      className="text-xs"
+                    >
+                      Webhook {log.webhook_status}
                     </Badge>
-                    <StatusIndicator
-                      status={log.status_code >= 200 && log.status_code < 300 ? 'success' : 
-                             log.status_code >= 400 && log.status_code < 500 ? 'warning' : 'error'}
-                      label={log.status_code.toString()}
-                      size="sm"
-                      showIcon={false}
-                    />
-                    {log.webhook_sent && (
-                      <Badge 
-                        variant={log.webhook_status && log.webhook_status < 400 ? 'success' : 'destructive'}
-                        className="text-xs"
-                      >
-                        Webhook
-                      </Badge>
-                    )}
+                  ) : (
+                    <Badge variant="outline" className="text-xs text-enostics-gray-400">
+                      No Webhook
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Timestamp */}
+                <div className="min-w-20 text-right">
+                  <span className="text-xs text-enostics-gray-400">
+                    {formatTime(log.created_at)}
+                  </span>
+                </div>
+
+                {/* Error Message */}
+                {log.error_message && (
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-red-400 truncate block">
+                      {log.error_message}
+                    </span>
                   </div>
-                  {log.error_message && (
-                    <div className="text-sm text-red-400 font-mono">{log.error_message}</div>
-                  )}
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                    title="View Details"
+                  >
+                    <Eye className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
-              
-              <div className="text-right text-sm text-enostics-gray-400 space-y-1">
-                <div className="font-medium">{formatTime(log.created_at)}</div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span>{formatDuration(log.response_time_ms)}</span>
-                  {log.source_ip && (
-                    <span className="font-mono opacity-75">{log.source_ip}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </DataPanel>
+            ))}
+          </div>
+        )}
+      </DashboardPanel>
     </div>
   )
 } 

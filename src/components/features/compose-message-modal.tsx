@@ -816,8 +816,8 @@ export default function ComposeMessageModal({
 
           {/* Error Display */}
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
+              <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
 
@@ -825,17 +825,17 @@ export default function ComposeMessageModal({
           {sendResult && (
             <div className={`p-4 rounded-md border ${
               sendResult.success 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-red-50 border-red-200'
+                ? 'bg-green-500/10 border-green-500/20' 
+                : 'bg-red-500/10 border-red-500/20'
             }`}>
               <div className="flex items-center gap-2 mb-2">
                 {sendResult.success ? (
-                  <Check className="h-5 w-5 text-green-600" />
+                  <Check className="h-5 w-5 text-green-400" />
                 ) : (
-                  <X className="h-5 w-5 text-red-600" />
+                  <X className="h-5 w-5 text-red-400" />
                 )}
                 <span className={`font-medium ${
-                  sendResult.success ? 'text-green-800' : 'text-red-800'
+                  sendResult.success ? 'text-green-400' : 'text-red-400'
                 }`}>
                   {sendResult.success ? 'Success!' : 'Failed'}
                 </span>
@@ -853,8 +853,8 @@ export default function ComposeMessageModal({
               
               {sendResult.data && (
                 <div className="mt-2">
-                  <h5 className="text-sm font-medium mb-1">Response:</h5>
-                  <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">
+                  <h5 className="text-sm font-medium mb-1 text-[hsl(var(--text-primary))]">Response:</h5>
+                  <pre className="text-xs bg-[hsl(var(--hover-bg))] text-[hsl(var(--text-primary))] p-2 rounded border border-[hsl(var(--border-color))] overflow-x-auto">
                     {typeof sendResult.data === 'string' 
                       ? sendResult.data 
                       : JSON.stringify(sendResult.data, null, 2)}
@@ -863,7 +863,7 @@ export default function ComposeMessageModal({
               )}
               
               {sendResult.error && (
-                <p className="text-sm text-red-600 mt-2">{sendResult.error}</p>
+                <p className="text-sm text-red-400 mt-2">{sendResult.error}</p>
               )}
             </div>
           )}

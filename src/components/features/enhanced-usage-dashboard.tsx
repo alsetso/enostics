@@ -520,11 +520,12 @@ export function EnhancedUsageDashboard() {
               Manage Webhooks
             </Button>
             <Button 
-              variant="outline"
-              className="border-enostics-gray-600 text-enostics-gray-300 hover:bg-enostics-gray-800"
-              onClick={() => window.location.href = '/docs'}
+              variant="outline" 
+              size="sm"
+              onClick={() => window.location.href = '/dashboard/endpoints'}
+              className="text-xs"
             >
-              API Documentation
+              Manage Endpoints
             </Button>
           </div>
         </CardContent>

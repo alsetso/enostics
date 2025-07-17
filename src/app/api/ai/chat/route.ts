@@ -6,16 +6,21 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { OllamaClient } from '../../../../ai/models/local/ollama-client'
+import { createServerSupabaseClient } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { message, model = 'llama3.2:3b', conversation = [] } = body
+    const supabase = await createServerSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { message, model = 'llama3.2:3b', conversation = [] } = await request.json()
 
     if (!message) {
-      return NextResponse.json({
-        error: 'Message is required'
-      }, { status: 400 })
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
     // Initialize Ollama client
@@ -58,14 +63,35 @@ export async function POST(request: NextRequest) {
         tokenCount: response.eval_count || null
       }
     })
-
   } catch (error) {
     console.error('Chat API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Return chat history or status
     return NextResponse.json({
-      error: 'Failed to process chat request',
-      response: 'I encountered an error while processing your message. Please try again.',
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+      status: 'Chat API is running',
+      user_id: user.id,
+      timestamp: new Date().toISOString()
+    })
+  } catch (error) {
+    console.error('Chat API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 } 

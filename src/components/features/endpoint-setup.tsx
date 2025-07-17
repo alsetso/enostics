@@ -342,14 +342,13 @@ print(response.status_code)`
               </div>
               
               <Button 
-                className="w-full" 
-                onClick={() => {
-                  // This would trigger a test request
-                  window.open('/dashboard/playground', '_blank')
-                }}
+                variant="outline" 
+                size="sm"
+                onClick={() => window.open('/dashboard/endpoints', '_blank')}
+                className="text-xs"
               >
-                <PlayCircle className="h-4 w-4 mr-2" />
-                Open Playground to Test
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Manage Endpoints
               </Button>
 
               <div className="text-center">

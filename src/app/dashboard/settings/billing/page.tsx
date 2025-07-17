@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { BillingTable } from '@/components/billing/BillingTable'
-import { CreditCard, Activity, Zap, Database } from 'lucide-react'
+import { Activity, Zap, Database } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface UsageData {
   current_month_requests: number
@@ -103,52 +102,49 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-enostics-gray-700 rounded w-64 mb-4"></div>
-          <div className="h-4 bg-enostics-gray-700 rounded w-96"></div>
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96"></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <CreditCard className="h-8 w-8 text-enostics-blue" />
-          Billing & Plans
-        </h1>
-        <p className="text-enostics-gray-400 mt-2">
-          Manage your subscription and view usage across all your endpoints
-        </p>
-      </div>
-
-      {/* Current Usage Overview */}
-      {usageData && planLimits && (
+    <div className="h-full overflow-y-auto">
+      <div className="space-y-12 pb-8">
+        {/* Plans Section - Moved to top */}
         <div>
-          <h2 className="text-xl font-bold text-white mb-4">Current Usage</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* API Requests */}
-            <Card className="bg-enostics-gray-900/50 border-enostics-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Activity className="h-5 w-5 text-enostics-blue" />
-                  API Requests
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
+          <BillingTable 
+            currentPlan={currentPlan}
+            onPlanChange={handlePlanChange}
+          />
+        </div>
+
+        {/* Current Usage */}
+        {usageData && planLimits && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Current Usage</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* API Requests */}
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                  <Activity className="h-5 w-5 text-blue-500" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">API Requests</h3>
+                </div>
+                <div className="space-y-3">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-2xl font-bold text-white">
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
                       {formatUsage(usageData.current_month_requests, planLimits.max_requests_per_month)}
                     </span>
-                    <span className="text-sm text-enostics-gray-400">this month</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">this month</span>
                   </div>
                   {planLimits.max_requests_per_month !== -1 && (
-                    <div className="w-full bg-enostics-gray-700 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div 
-                        className="bg-enostics-blue h-2 rounded-full transition-all duration-300"
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{ 
                           width: `${getUsagePercentage(usageData.current_month_requests, planLimits.max_requests_per_month)}%` 
                         }}
@@ -156,29 +152,25 @@ export default function BillingPage() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Endpoints */}
-            <Card className="bg-enostics-gray-900/50 border-enostics-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Zap className="h-5 w-5 text-enostics-green" />
-                  Endpoints
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
+              {/* Endpoints */}
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                  <Zap className="h-5 w-5 text-emerald-500" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Endpoints</h3>
+                </div>
+                <div className="space-y-3">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-2xl font-bold text-white">
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
                       {formatUsage(usageData.endpoints_count, planLimits.max_endpoints)}
                     </span>
-                    <span className="text-sm text-enostics-gray-400">active</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">active</span>
                   </div>
                   {planLimits.max_endpoints !== -1 && (
-                    <div className="w-full bg-enostics-gray-700 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div 
-                        className="bg-enostics-green h-2 rounded-full transition-all duration-300"
+                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
                         style={{ 
                           width: `${getUsagePercentage(usageData.endpoints_count, planLimits.max_endpoints)}%` 
                         }}
@@ -186,29 +178,25 @@ export default function BillingPage() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* API Keys */}
-            <Card className="bg-enostics-gray-900/50 border-enostics-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Database className="h-5 w-5 text-enostics-purple" />
-                  API Keys
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
+              {/* API Keys */}
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                  <Database className="h-5 w-5 text-purple-500" />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">API Keys</h3>
+                </div>
+                <div className="space-y-3">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-2xl font-bold text-white">
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
                       {formatUsage(usageData.api_keys_count, planLimits.max_api_keys)}
                     </span>
-                    <span className="text-sm text-enostics-gray-400">active</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">active</span>
                   </div>
                   {planLimits.max_api_keys !== -1 && (
-                    <div className="w-full bg-enostics-gray-700 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div 
-                        className="bg-enostics-purple h-2 rounded-full transition-all duration-300"
+                        className="bg-purple-500 h-2 rounded-full transition-all duration-300"
                         style={{ 
                           width: `${getUsagePercentage(usageData.api_keys_count, planLimits.max_api_keys)}%` 
                         }}
@@ -216,18 +204,10 @@ export default function BillingPage() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
-
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-6">Choose Your Plan</h2>
-        <BillingTable 
-          currentPlan={currentPlan}
-          onPlanChange={handlePlanChange}
-        />
+        )}
       </div>
     </div>
   )

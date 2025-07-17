@@ -149,13 +149,13 @@ export function NotificationBell() {
 
     if (status.endpoint_created && !status.first_request_sent) {
       notifications.push({
-        id: 'test-endpoint',
+        id: 'endpoint-test',
         type: 'onboarding',
         title: 'Test Your Endpoint',
-        message: 'Send your first request to see your endpoint in action',
+        message: 'Try sending a test request to your endpoint to see how it works.',
         action: {
           label: 'Test Now',
-          href: '/dashboard/playground'
+          href: '/dashboard/endpoints'
         },
         priority: 'medium',
         read: false,

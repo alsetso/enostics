@@ -1,12 +1,33 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Loader2, Settings, Zap, Brain, Bolt, Sparkles, Copy, Check, Cloud, Eye, ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Send, Bot, User, Loader2, Settings, Zap, Brain, Bolt, Sparkles, Copy, Check, Cloud, Eye, ArrowLeft, Globe, Database, Shield, BarChart3, Wrench, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { createClientSupabaseClient } from '@/lib/supabase'
+
+// Custom speed badge component
+const SpeedBadge = ({ speed, className = '' }: { speed: string, className?: string }) => {
+  const getSpeedColor = (speed: string) => {
+    switch (speed) {
+      case 'ultra-fast': return 'border border-green-500 text-green-600 dark:text-green-400'
+      case 'fast': return 'border border-blue-500 text-blue-600 dark:text-blue-400'
+      case 'medium': return 'border border-yellow-500 text-yellow-600 dark:text-yellow-400'
+      case 'slow': return 'border border-orange-500 text-orange-600 dark:text-orange-400'
+      default: return 'border border-gray-500 text-gray-600 dark:text-gray-400'
+    }
+  }
+  
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-sm bg-transparent ${getSpeedColor(speed)} ${className}`}>
+      {speed}
+    </span>
+  )
+}
 
 interface Message {
   id: string
@@ -14,6 +35,7 @@ interface Message {
   content: string
   timestamp: Date
   model?: string
+  tools_used?: string[]
 }
 
 interface ModelOption {
@@ -24,6 +46,15 @@ interface ModelOption {
   speed: 'ultra-fast' | 'fast' | 'medium' | 'slow'
   capabilities: string[]
   icon: any
+}
+
+interface ToolOption {
+  id: string
+  name: string
+  description: string
+  category: 'openai' | 'internal'
+  icon: any
+  color: string
 }
 
 const availableModels: ModelOption[] = [
@@ -83,6 +114,67 @@ const availableModels: ModelOption[] = [
   }
 ]
 
+const availableTools: ToolOption[] = [
+  // OpenAI Function Calling Tools
+  {
+    id: 'browse_web',
+    name: 'Web Browser',
+    description: 'Browse websites and extract content for analysis',
+    category: 'openai',
+    icon: Globe,
+    color: 'text-blue-500'
+  },
+  {
+    id: 'analyze_payload',
+    name: 'Payload Analyzer',
+    description: 'Analyze JSON payloads for patterns and insights',
+    category: 'openai',
+    icon: BarChart3,
+    color: 'text-purple-500'
+  },
+  {
+    id: 'query_database',
+    name: 'Database Query',
+    description: 'Query your database for related data and patterns',
+    category: 'openai',
+    icon: Database,
+    color: 'text-indigo-500'
+  },
+  {
+    id: 'call_external_api',
+    name: 'External APIs',
+    description: 'Call external APIs for data enrichment',
+    category: 'openai',
+    icon: Wrench,
+    color: 'text-cyan-500'
+  },
+  {
+    id: 'classify_data',
+    name: 'Data Classifier',
+    description: 'Classify and tag data with business context',
+    category: 'openai',
+    icon: Brain,
+    color: 'text-green-500'
+  },
+  {
+    id: 'assess_risk',
+    name: 'Risk Assessment',
+    description: 'Assess security and quality risks in data',
+    category: 'openai',
+    icon: Shield,
+    color: 'text-red-500'
+  },
+  // Internal Agent Tools
+  {
+    id: 'inbox_reviewer',
+    name: 'Inbox Reviewer',
+    description: 'Automatically review and analyze inbox data',
+    category: 'internal',
+    icon: MessageSquare,
+    color: 'text-orange-500'
+  }
+]
+
 // Fallback response generator for when AI is not available
 const generateFallbackResponse = (input: string): string => {
   const lowerInput = input.toLowerCase()
@@ -103,22 +195,93 @@ const generateFallbackResponse = (input: string): string => {
 }
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello! I\'m your AI assistant powered by both local and cloud models. I can help you filter, review, tag, and summarize JSON payloads, as well as handle general conversations. How can I help you today?',
-      timestamp: new Date(),
-      model: 'gpt-4o-mini'
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [selectedModel, setSelectedModel] = useState('gpt-4o-mini')
+  const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showModelSelector, setShowModelSelector] = useState(false)
+  const [showToolSelector, setShowToolSelector] = useState(false)
   const [modelSelectorView, setModelSelectorView] = useState<'main' | 'cloud' | 'local'>('main')
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const supabase = createClientSupabaseClient()
+
+  // Authentication check
+  useEffect(() => {
+    let mounted = true
+
+    const checkAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error) {
+          console.error('Auth error:', error)
+          if (mounted) {
+            router.push('/login')
+          }
+          return
+        }
+
+        if (!user) {
+          if (mounted) {
+            router.push('/login')
+          }
+          return
+        }
+
+        if (mounted) {
+          setUser(user)
+          setAuthLoading(false)
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+        if (mounted) {
+          router.push('/login')
+        }
+      }
+    }
+
+    checkAuth()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        router.push('/login')
+      } else if (event === 'SIGNED_IN' && session) {
+        setUser(session.user)
+        setAuthLoading(false)
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [router, supabase])
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[hsl(var(--secondary-bg))]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[hsl(var(--text-primary))]" />
+          <p className="text-[hsl(var(--text-secondary))]">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render anything if user is not authenticated
+  if (!user) {
+    return null
+  }
+
+  // Determine if we're in initial state (no messages) or conversation state
+  const isInitialState = messages.length === 0
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -132,10 +295,18 @@ export default function ChatPage() {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedMessageId(messageId)
-      setTimeout(() => setCopiedMessageId(null), 2000) // Reset after 2 seconds
+      setTimeout(() => setCopiedMessageId(null), 2000)
     } catch (err) {
       console.error('Failed to copy text: ', err)
     }
+  }
+
+  const toggleTool = (toolId: string) => {
+    setSelectedTools(prev => 
+      prev.includes(toolId) 
+        ? prev.filter(id => id !== toolId)
+        : [...prev, toolId]
+    )
   }
 
   const sendMessage = async () => {
@@ -145,7 +316,8 @@ export default function ChatPage() {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
-      timestamp: new Date()
+      timestamp: new Date(),
+      tools_used: selectedTools.length > 0 ? [...selectedTools] : undefined
     }
 
     setMessages(prev => [...prev, userMessage])
@@ -153,7 +325,9 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      // Call our AI chat endpoint
+      // Determine if we should enable functions based on model and selected tools
+      const enableFunctions = selectedModel.startsWith('gpt-') && selectedTools.length > 0
+
       const response = await fetch('/api/ai/chat-simple', {
         method: 'POST',
         headers: {
@@ -162,7 +336,9 @@ export default function ChatPage() {
         body: JSON.stringify({
           message: userMessage.content,
           model: selectedModel,
-          conversation: messages.slice(-5) // Send last 5 messages for context
+          conversation: messages.slice(-5),
+          enableFunctions,
+          selectedTools: selectedTools
         })
       })
 
@@ -177,27 +353,27 @@ export default function ChatPage() {
         role: 'assistant',
         content: data.response || 'Sorry, I encountered an error processing your request.',
         timestamp: new Date(),
-        model: selectedModel
+        model: selectedModel,
+        tools_used: data.metadata?.functionCalled ? [data.metadata.functionCalled] : undefined
       }
 
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       console.error('Chat error:', error)
       
-      // Provide a helpful fallback response
-      const fallbackResponse = generateFallbackResponse(userMessage.content)
-      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: fallbackResponse,
+        content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date(),
-        model: 'fallback'
+        model: 'error'
       }
 
       setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      // Clear selected tools after sending
+      setSelectedTools([])
     }
   }
 
@@ -213,373 +389,886 @@ export default function ChatPage() {
 
   const getSpeedColor = (speed: string) => {
     switch (speed) {
-      case 'ultra-fast': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      case 'fast': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-      case 'slow': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+      case 'ultra-fast': return 'border border-green-500 text-green-600 dark:text-green-400'
+      case 'fast': return 'border border-blue-500 text-blue-600 dark:text-blue-400'
+      case 'medium': return 'border border-yellow-500 text-yellow-600 dark:text-yellow-400'
+      case 'slow': return 'border border-orange-500 text-orange-600 dark:text-orange-400'
+      default: return 'border border-gray-500 text-gray-600 dark:text-gray-400'
     }
   }
 
   return (
     <div className="flex flex-col h-screen bg-[hsl(var(--secondary-bg))] relative">
-      {/* Chat Messages Container - Responsive and Centered */}
-      <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-32 sm:pb-40">
-        <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto space-y-4 sm:space-y-6">
-          {/* Top spacer to push first message down */}
-          <div className="h-[50px]"></div>
-          
-          {messages.map((message) => (
-            <div key={message.id} className="group">
-              <div className={`flex items-start space-x-2 sm:space-x-4 ${
-                message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-              }`}>
-                {/* Avatar - Responsive sizing */}
-                <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
-                  message.role === 'user' 
-                    ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg' 
-                    : 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg'
-                }`}>
-                  {message.role === 'user' ? (
-                    <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                  ) : (
-                    <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
-                  )}
-                </div>
+      {/* Initial Centered State */}
+      {isInitialState && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <div className="w-full max-w-2xl text-center space-y-8">
+            {/* Heading */}
+            <div className="space-y-4">
+              <h1 className="text-4xl md:text-5xl font-bold text-[hsl(var(--text-primary))] tracking-tight">
+                Chat with AI
+              </h1>
+              <p className="text-lg text-[hsl(var(--text-secondary))] max-w-lg mx-auto">
+                Start a conversation with our AI models. Attach tools to enhance your prompts with specialized capabilities.
+              </p>
+            </div>
+
+            {/* Start Chat Input Container */}
+            <div className="w-full">
+              <div className="bg-[hsl(var(--primary-bg))]/80 backdrop-blur-xl border border-[hsl(var(--border-color))]/50 rounded-2xl shadow-2xl p-6 relative">
                 
-                {/* Message Content - Responsive */}
-                <div className="flex-1 min-w-0 max-w-[85%] sm:max-w-none">
-                  <div className={`prose prose-sm max-w-none ${
-                    message.role === 'user' ? 'text-right' : ''
-                  }`}>
-                    <div className={`inline-block p-3 sm:p-4 rounded-xl sm:rounded-2xl backdrop-blur-sm text-sm sm:text-base ${
-                  message.role === 'user'
-                        ? 'bg-[hsl(var(--primary-bg))]/60 border border-[hsl(var(--border-color))]/30 text-[hsl(var(--text-primary))] shadow-sm'
-                        : 'text-[hsl(var(--text-primary))]'
-                    }`}>
-                      <p className="whitespace-pre-wrap m-0 leading-relaxed">{message.content}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Message Metadata with Copy Button - Responsive */}
-                  <div className={`flex items-center space-x-1 sm:space-x-2 mt-1 sm:mt-2 text-xs text-[hsl(var(--text-muted))] ${
-                    message.role === 'user' ? 'justify-end' : ''
-                  }`}>
-                    <span className="text-xs">{message.timestamp.toLocaleTimeString()}</span>
-                  {message.model && message.role === 'assistant' && (
-                      <>
-                        <span className="hidden sm:inline">•</span>
-                        <span className={`text-xs hidden sm:inline ${message.model === 'fallback' ? 'text-orange-500' : 'text-[hsl(var(--text-secondary))]'}`}>
-                          {availableModels.find(m => m.id === message.model)?.name || message.model}
-                    </span>
-                        {message.model?.startsWith('gpt-') && (
-                          <>
-                            <span className="hidden sm:inline">•</span>
-                            <span className="text-xs hidden sm:inline text-blue-500">Cloud</span>
-                          </>
-                        )}
-                      </>
-                    )}
-                    <span>•</span>
-                    <button
-                      onClick={() => copyToClipboard(message.content, message.id)}
-                      className="flex items-center space-x-1 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))] transition-colors duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      title="Copy message"
-                    >
-                      {copiedMessageId === message.id ? (
+                {/* Model Selector Dropdown */}
+                {showModelSelector && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-4 w-96 bg-[hsl(var(--primary-bg))]/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-[hsl(var(--border-color))]/50 overflow-hidden max-h-80 overflow-y-auto z-50">
+                    <div className="p-4">
+                      {/* Main View - Cloud vs Local Selection */}
+                      {modelSelectorView === 'main' && (
                         <>
-                          <Check className="h-3 w-3 text-green-500" />
-                          <span className="text-green-500 hidden sm:inline">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3 w-3" />
-                          <span className="hidden sm:inline">Copy</span>
+                          <h3 className="text-sm font-semibold text-[hsl(var(--text-primary))] px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-3">
+                            Select AI Provider
+                          </h3>
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Cloud Option */}
+                            <button
+                              onClick={() => setModelSelectorView('cloud')}
+                              className="flex flex-col items-center space-y-3 p-4 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 border border-[hsl(var(--border-color))]/30 hover:border-blue-500/50 group"
+                            >
+                              <div className="p-3 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-200">
+                                <Cloud className="h-6 w-6 text-blue-500" />
+                              </div>
+                              <div className="text-center">
+                                <h4 className="text-sm font-medium text-[hsl(var(--text-primary))] mb-1">Cloud Use</h4>
+                                <p className="text-xs text-[hsl(var(--text-secondary))]">OpenAI Models</p>
+                              </div>
+                            </button>
+
+                            {/* Local Option */}
+                            <button
+                              onClick={() => setModelSelectorView('local')}
+                              className="flex flex-col items-center space-y-3 p-4 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 border border-[hsl(var(--border-color))]/30 hover:border-green-500/50 group"
+                            >
+                              <div className="p-3 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 group-hover:from-green-500/30 group-hover:to-emerald-500/30 transition-all duration-200">
+                                <Eye className="h-6 w-6 text-green-500" />
+                              </div>
+                              <div className="text-center">
+                                <h4 className="text-sm font-medium text-[hsl(var(--text-primary))] mb-1">Local Use</h4>
+                                <p className="text-xs text-[hsl(var(--text-secondary))]">Ollama Models</p>
+                              </div>
+                            </button>
+                          </div>
                         </>
                       )}
+
+                      {/* Cloud Models View */}
+                      {modelSelectorView === 'cloud' && (
+                        <>
+                          <div className="flex items-center space-x-2 px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-2">
+                            <button
+                              onClick={() => setModelSelectorView('main')}
+                              className="p-1 hover:bg-[hsl(var(--hover-bg))]/60 rounded-md transition-colors duration-200"
+                            >
+                              <ArrowLeft className="h-4 w-4 text-[hsl(var(--text-muted))]" />
+                            </button>
+                            <h3 className="text-sm font-semibold text-[hsl(var(--text-primary))] flex items-center space-x-2">
+                              <Cloud className="h-4 w-4 text-blue-500" />
+                              <span>Cloud Models</span>
+                            </h3>
+                          </div>
+                          <div className="space-y-1">
+                            {availableModels.filter(model => model.id.startsWith('gpt-')).map((model) => {
+                              const Icon = model.icon
+                              const isSelected = selectedModel === model.id
+                              return (
+                                <button
+                                  key={model.id}
+                                  onClick={() => {
+                                    setSelectedModel(model.id)
+                                    setShowModelSelector(false)
+                                    setModelSelectorView('main')
+                                  }}
+                                  className={`w-full flex items-start space-x-3 p-3 rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 group ${
+                                    isSelected ? 'bg-blue-500/10 ring-1 ring-blue-500/30 border border-blue-500/20' : 'border border-transparent'
+                                  }`}
+                                >
+                                  <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                    <Icon className={`h-4 w-4 ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-secondary))]'}`} />
+                                  </div>
+                                  <div className="flex-1 text-left min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <span className={`font-medium text-sm truncate ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                        {model.name}
+                                      </span>
+                                      <Badge className={`text-xs ${getSpeedColor(model.speed)} shrink-0`}>
+                                        {model.speed}
+                                      </Badge>
+                                      <span className="text-xs text-blue-500 shrink-0">{model.size}</span>
+                                    </div>
+                                    <p className="text-sm text-[hsl(var(--text-secondary))] mb-2 line-clamp-2">{model.description}</p>
+                                    <div className="flex flex-wrap gap-1 overflow-hidden">
+                                      {model.capabilities.slice(0, 2).map((cap) => (
+                                        <span 
+                                          key={cap} 
+                                          className="text-xs text-[hsl(var(--text-muted))] bg-[hsl(var(--hover-bg))]/40 px-2 py-0.5 rounded-md truncate"
+                                        >
+                                          {cap}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Local Models View */}
+                      {modelSelectorView === 'local' && (
+                        <>
+                          <div className="flex items-center space-x-2 px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-2">
+                            <button
+                              onClick={() => setModelSelectorView('main')}
+                              className="p-1 hover:bg-[hsl(var(--hover-bg))]/60 rounded-md transition-colors duration-200"
+                            >
+                              <ArrowLeft className="h-4 w-4 text-[hsl(var(--text-muted))]" />
+                            </button>
+                            <h3 className="text-sm font-semibold text-[hsl(var(--text-primary))] flex items-center space-x-2">
+                              <Eye className="h-4 w-4 text-green-500" />
+                              <span>Local Models</span>
+                            </h3>
+                          </div>
+                          <div className="space-y-1">
+                            {availableModels.filter(model => !model.id.startsWith('gpt-')).map((model) => {
+                              const Icon = model.icon
+                              const isSelected = selectedModel === model.id
+                              return (
+                                <button
+                                  key={model.id}
+                                  onClick={() => {
+                                    setSelectedModel(model.id)
+                                    setShowModelSelector(false)
+                                    setModelSelectorView('main')
+                                  }}
+                                  className={`w-full flex items-start space-x-3 p-3 rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 group ${
+                                    isSelected ? 'bg-green-500/10 ring-1 ring-green-500/30 border border-green-500/20' : 'border border-transparent'
+                                  }`}
+                                >
+                                  <div className={`p-2 rounded-lg ${isSelected ? 'bg-green-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                    <Icon className={`h-4 w-4 ${isSelected ? 'text-green-500' : 'text-[hsl(var(--text-secondary))]'}`} />
+                                  </div>
+                                  <div className="flex-1 text-left min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <span className={`font-medium text-sm truncate ${isSelected ? 'text-green-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                        {model.name}
+                                      </span>
+                                      <Badge className={`text-xs ${getSpeedColor(model.speed)} shrink-0`}>
+                                        {model.speed}
+                                      </Badge>
+                                      <span className="text-xs text-[hsl(var(--text-muted))] shrink-0">{model.size}</span>
+                                    </div>
+                                    <p className="text-sm text-[hsl(var(--text-secondary))] mb-2 line-clamp-2">{model.description}</p>
+                                    <div className="flex flex-wrap gap-1 overflow-hidden">
+                                      {model.capabilities.slice(0, 2).map((cap) => (
+                                        <span 
+                                          key={cap} 
+                                          className="text-xs text-[hsl(var(--text-muted))] bg-[hsl(var(--hover-bg))]/40 px-2 py-0.5 rounded-md truncate"
+                                        >
+                                          {cap}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tool Selector Dropdown */}
+                {showToolSelector && (
+                  <div className="absolute bottom-full right-0 mb-4 w-80 bg-[hsl(var(--primary-bg))]/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-[hsl(var(--border-color))]/50 overflow-hidden max-h-80 overflow-y-auto z-50">
+                    <div className="p-4">
+                      <h3 className="text-sm font-semibold text-[hsl(var(--text-primary))] px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-3">
+                        Attach Tools
+                      </h3>
+                      
+                      {/* OpenAI Tools */}
+                      <div className="mb-4">
+                        <h4 className="text-xs font-medium text-[hsl(var(--text-secondary))] mb-2 px-2">OpenAI Functions</h4>
+                        <div className="space-y-1">
+                          {availableTools.filter(tool => tool.category === 'openai').map((tool) => {
+                            const Icon = tool.icon
+                            const isSelected = selectedTools.includes(tool.id)
+                            return (
+                              <button
+                                key={tool.id}
+                                onClick={() => toggleTool(tool.id)}
+                                className={`w-full flex items-start space-x-3 p-3 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 ${
+                                  isSelected ? 'bg-blue-500/10 ring-1 ring-blue-500/30 border border-blue-500/20' : 'border border-transparent'
+                                }`}
+                              >
+                                <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                  <Icon className={`h-4 w-4 ${isSelected ? 'text-blue-500' : tool.color}`} />
+                                </div>
+                                <div className="flex-1 text-left min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`font-medium text-sm ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                      {tool.name}
+                                    </span>
+                                    {isSelected && (
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[hsl(var(--text-secondary))] line-clamp-2">{tool.description}</p>
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Internal Agent Tools */}
+              <div>
+                        <h4 className="text-xs font-medium text-[hsl(var(--text-secondary))] mb-2 px-2">Internal Agents</h4>
+                        <div className="space-y-1">
+                          {availableTools.filter(tool => tool.category === 'internal').map((tool) => {
+                            const Icon = tool.icon
+                            const isSelected = selectedTools.includes(tool.id)
+                            return (
+                              <button
+                                key={tool.id}
+                                onClick={() => toggleTool(tool.id)}
+                                className={`w-full flex items-start space-x-3 p-3 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 ${
+                                  isSelected ? 'bg-orange-500/10 ring-1 ring-orange-500/30 border border-orange-500/20' : 'border border-transparent'
+                                }`}
+                              >
+                                <div className={`p-2 rounded-lg ${isSelected ? 'bg-orange-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                  <Icon className={`h-4 w-4 ${isSelected ? 'text-orange-500' : tool.color}`} />
+                                </div>
+                                <div className="flex-1 text-left min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`font-medium text-sm ${isSelected ? 'text-orange-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                      {tool.name}
+                                    </span>
+                                    {isSelected && (
+                                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[hsl(var(--text-secondary))] line-clamp-2">{tool.description}</p>
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Model Info Bar */}
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-[hsl(var(--border-color))]/20">
+                  <div className="flex items-center space-x-3">
+                    <ModelIcon className="h-5 w-5 text-[hsl(var(--text-secondary))]" />
+                    <span className="text-base font-medium text-[hsl(var(--text-primary))]">
+                      {selectedModelInfo?.name}
+                    </span>
+                    <SpeedBadge speed={selectedModelInfo?.speed || 'medium'} />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        setShowToolSelector(!showToolSelector)
+                        setShowModelSelector(false)
+                      }}
+                      className={`p-2 rounded-lg transition-colors duration-200 ${
+                        selectedTools.length > 0 
+                          ? 'bg-blue-500/20 text-blue-500 hover:bg-blue-500/30' 
+                          : 'hover:bg-[hsl(var(--hover-bg))]/60 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))]'
+                      }`}
+                      title="Attach Tools"
+                    >
+                      <Wrench className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowModelSelector(!showModelSelector)
+                        setModelSelectorView('main')
+                        setShowToolSelector(false)
+                      }}
+                      className="p-2 hover:bg-[hsl(var(--hover-bg))]/60 rounded-lg transition-colors duration-200"
+                      title="Change AI Model"
+                    >
+                      <Settings className="h-5 w-5 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))]" />
+                    </button>
+                  </div>
+              </div>
+              
+                {/* Selected Tools Display */}
+                {selectedTools.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-sm font-medium text-[hsl(var(--text-primary))]">Attached Tools:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTools.map(toolId => {
+                        const tool = availableTools.find(t => t.id === toolId)
+                        if (!tool) return null
+                        const Icon = tool.icon
+                        return (
+                          <div key={toolId} className="flex items-center space-x-2 bg-[hsl(var(--hover-bg))]/60 rounded-lg px-3 py-2 border border-[hsl(var(--border-color))]/30">
+                            <Icon className={`h-4 w-4 ${tool.color}`} />
+                            <span className="text-sm text-[hsl(var(--text-primary))]">{tool.name}</span>
+                            <button
+                              onClick={() => toggleTool(toolId)}
+                              className="text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))] ml-1"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Input Area */}
+                <div className="flex items-end space-x-4">
+                  <div className="flex-1 relative">
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          sendMessage()
+                        }
+                      }}
+                      placeholder="Start your conversation..."
+                      disabled={isLoading}
+                      className="w-full resize-none border-0 rounded-xl px-4 py-4 pr-16 bg-[hsl(var(--secondary-bg))]/60 text-[hsl(var(--text-primary))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-[hsl(var(--secondary-bg))]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 backdrop-blur-sm text-base overflow-y-auto"
+                      style={{
+                        height: input.trim() ? '200px' : '100px',
+                        maxHeight: '200px',
+                      }}
+                    />
+                    <div className="absolute right-2 bottom-2">
+                      <button
+                        onClick={sendMessage}
+                        disabled={!input.trim() || isLoading}
+                        className="p-2.5 border border-[hsl(var(--border-color))] text-[hsl(var(--text-primary))] rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 group"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-Submission Conversation State */}
+      {!isInitialState && (
+        <>
+          {/* Chat Messages Container - Responsive and Centered */}
+          <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-32 sm:pb-40">
+            <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto space-y-4 sm:space-y-6">
+              {/* Top spacer to push first message down */}
+              <div className="h-[50px]"></div>
+              
+          {messages.map((message) => (
+                <div key={message.id} className="group">
+                  <div className={`flex items-start space-x-2 sm:space-x-4 ${
+                    message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                  }`}>
+                    {/* Avatar - Responsive sizing */}
+                    <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                      message.role === 'user' 
+                        ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg' 
+                        : 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg'
+                    }`}>
+                      {message.role === 'user' ? (
+                        <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                      ) : (
+                        <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
+                      )}
+                    </div>
+                    
+                    {/* Message Content - Responsive */}
+                    <div className="flex-1 min-w-0 max-w-[85%] sm:max-w-none">
+                      <div className={`prose prose-sm max-w-none ${
+                        message.role === 'user' ? 'text-right' : ''
+                      }`}>
+                        <div className={`inline-block p-3 sm:p-4 rounded-xl sm:rounded-2xl backdrop-blur-sm text-sm sm:text-base ${
+                          message.role === 'user'
+                            ? 'bg-[hsl(var(--primary-bg))]/60 border border-[hsl(var(--border-color))]/30 text-[hsl(var(--text-primary))] shadow-sm'
+                            : 'text-[hsl(var(--text-primary))]'
+                        }`}>
+                          <p className="whitespace-pre-wrap m-0 leading-relaxed">{message.content}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Tools Used Display */}
+                      {message.tools_used && message.tools_used.length > 0 && (
+                        <div className={`mt-2 flex flex-wrap gap-1 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                          {message.tools_used.map(toolId => {
+                            const tool = availableTools.find(t => t.id === toolId)
+                            if (!tool) return null
+                            const Icon = tool.icon
+                            return (
+                              <div key={toolId} className="flex items-center space-x-1 bg-[hsl(var(--hover-bg))]/40 rounded-md px-2 py-1 text-xs">
+                                <Icon className={`h-3 w-3 ${tool.color}`} />
+                                <span className="text-[hsl(var(--text-secondary))]">{tool.name}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* Message Metadata with Copy Button - Responsive */}
+                      <div className={`flex items-center space-x-1 sm:space-x-2 mt-1 sm:mt-2 text-xs text-[hsl(var(--text-muted))] ${
+                        message.role === 'user' ? 'justify-end' : ''
+                      }`}>
+                        <span className="text-xs">{message.timestamp.toLocaleTimeString()}</span>
+                        {message.model && message.role === 'assistant' && (
+                          <>
+                            <span className="hidden sm:inline">•</span>
+                            <span className={`text-xs hidden sm:inline ${message.model === 'error' ? 'text-red-500' : 'text-[hsl(var(--text-secondary))]'}`}>
+                              {availableModels.find(m => m.id === message.model)?.name || message.model}
+                            </span>
+                            {message.model?.startsWith('gpt-') && (
+                              <>
+                                <span className="hidden sm:inline">•</span>
+                                <span className="text-xs hidden sm:inline text-blue-500">Cloud</span>
+                              </>
+                            )}
+                          </>
+                        )}
+                        <span>•</span>
+                        <button
+                          onClick={() => copyToClipboard(message.content, message.id)}
+                          className="flex items-center space-x-1 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))] transition-colors duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          title="Copy message"
+                        >
+                          {copiedMessageId === message.id ? (
+                            <>
+                              <Check className="h-3 w-3 text-green-500" />
+                              <span className="text-green-500 hidden sm:inline">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              <span className="hidden sm:inline">Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {isLoading && (
+                <div className="group">
+                  <div className="flex items-start space-x-2 sm:space-x-4">
+                    <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-full flex items-center justify-center shadow-lg">
+                      <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="bg-[hsl(var(--primary-bg))]/60 border border-[hsl(var(--border-color))]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4 backdrop-blur-sm shadow-sm">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-[hsl(var(--text-muted))]" />
+                          <span className="text-xs sm:text-sm text-[hsl(var(--text-secondary))]">Thinking...</span>
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-[hsl(var(--text-muted))] rounded-full animate-pulse"></div>
+                            <div className="w-1 h-1 bg-[hsl(var(--text-muted))] rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                            <div className="w-1 h-1 bg-[hsl(var(--text-muted))] rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Bottom Input Area - Aligned with Messages */}
+          <div className="fixed bottom-3 sm:bottom-6 px-3 sm:px-6 left-0 lg:left-64 right-0 z-30">
+            <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto">
+              <div className="bg-[hsl(var(--primary-bg))]/80 backdrop-blur-xl border border-[hsl(var(--border-color))]/50 rounded-xl sm:rounded-2xl shadow-2xl p-3 sm:p-4 relative">
+              
+                {/* Model Selector Dropdown - Positioned as popup */}
+                {showModelSelector && (
+                  <div className="absolute bottom-full right-0 mb-2 w-80 sm:w-96 bg-[hsl(var(--primary-bg))]/95 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-[hsl(var(--border-color))]/50 overflow-hidden max-h-80 overflow-y-auto">
+                    <div className="p-2 sm:p-3">
+                      {/* Main View - Cloud vs Local Selection */}
+                      {modelSelectorView === 'main' && (
+                        <>
+                          <h3 className="text-xs sm:text-sm font-semibold text-[hsl(var(--text-primary))] px-2 sm:px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-3">
+                            Select AI Provider
+                          </h3>
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Cloud Option */}
+                            <button
+                              onClick={() => setModelSelectorView('cloud')}
+                              className="flex flex-col items-center space-y-3 p-4 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 border border-[hsl(var(--border-color))]/30 hover:border-blue-500/50 group"
+                            >
+                              <div className="p-3 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-200">
+                                <Cloud className="h-6 w-6 text-blue-500" />
+                              </div>
+                              <div className="text-center">
+                                <h4 className="text-sm font-medium text-[hsl(var(--text-primary))] mb-1">Cloud Use</h4>
+                                <p className="text-xs text-[hsl(var(--text-secondary))]">OpenAI Models</p>
+                              </div>
+                            </button>
+
+                            {/* Local Option */}
+                            <button
+                              onClick={() => setModelSelectorView('local')}
+                              className="flex flex-col items-center space-y-3 p-4 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 border border-[hsl(var(--border-color))]/30 hover:border-green-500/50 group"
+                            >
+                              <div className="p-3 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 group-hover:from-green-500/30 group-hover:to-emerald-500/30 transition-all duration-200">
+                                <Eye className="h-6 w-6 text-green-500" />
+                              </div>
+                              <div className="text-center">
+                                <h4 className="text-sm font-medium text-[hsl(var(--text-primary))] mb-1">Local Use</h4>
+                                <p className="text-xs text-[hsl(var(--text-secondary))]">Ollama Models</p>
+                              </div>
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Cloud Models View */}
+                      {modelSelectorView === 'cloud' && (
+                        <>
+                          <div className="flex items-center space-x-2 px-2 sm:px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-2">
+                            <button
+                              onClick={() => setModelSelectorView('main')}
+                              className="p-1 hover:bg-[hsl(var(--hover-bg))]/60 rounded-md transition-colors duration-200"
+                            >
+                              <ArrowLeft className="h-4 w-4 text-[hsl(var(--text-muted))]" />
+                            </button>
+                            <h3 className="text-xs sm:text-sm font-semibold text-[hsl(var(--text-primary))] flex items-center space-x-2">
+                              <Cloud className="h-4 w-4 text-blue-500" />
+                              <span>Cloud Models</span>
+                            </h3>
+                          </div>
+                          <div className="space-y-1">
+                            {availableModels.filter(model => model.id.startsWith('gpt-')).map((model) => {
+                              const Icon = model.icon
+                              const isSelected = selectedModel === model.id
+                              return (
+                                <button
+                                  key={model.id}
+                                  onClick={() => {
+                                    setSelectedModel(model.id)
+                                    setShowModelSelector(false)
+                                    setModelSelectorView('main')
+                                  }}
+                                  className={`w-full flex items-start space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg sm:rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 group ${
+                                    isSelected ? 'bg-blue-500/10 ring-1 ring-blue-500/30 border border-blue-500/20' : 'border border-transparent'
+                                  }`}
+                                >
+                                  <div className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg ${isSelected ? 'bg-blue-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                    <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-secondary))]'}`} />
+                                  </div>
+                                  <div className="flex-1 text-left min-w-0">
+                                    <div className="flex items-center space-x-1 sm:space-x-2 mb-1">
+                                      <span className={`font-medium text-xs sm:text-sm truncate ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                        {model.name}
+                                      </span>
+                                      <Badge className={`text-xs ${getSpeedColor(model.speed)} shrink-0`}>
+                                        {model.speed}
+                                      </Badge>
+                                      <span className="text-xs text-blue-500 shrink-0 hidden sm:inline">{model.size}</span>
+                                    </div>
+                                    <p className="text-xs sm:text-sm text-[hsl(var(--text-secondary))] mb-1 sm:mb-2 line-clamp-2">{model.description}</p>
+                                    <div className="flex flex-wrap gap-1 overflow-hidden">
+                                      {model.capabilities.slice(0, 2).map((cap) => (
+                                        <span 
+                                          key={cap} 
+                                          className="text-xs text-[hsl(var(--text-muted))] bg-[hsl(var(--hover-bg))]/40 px-1.5 sm:px-2 py-0.5 rounded-md truncate"
+                                        >
+                                          {cap}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Local Models View */}
+                      {modelSelectorView === 'local' && (
+                        <>
+                          <div className="flex items-center space-x-2 px-2 sm:px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-2">
+                            <button
+                              onClick={() => setModelSelectorView('main')}
+                              className="p-1 hover:bg-[hsl(var(--hover-bg))]/60 rounded-md transition-colors duration-200"
+                            >
+                              <ArrowLeft className="h-4 w-4 text-[hsl(var(--text-muted))]" />
+                            </button>
+                            <h3 className="text-xs sm:text-sm font-semibold text-[hsl(var(--text-primary))] flex items-center space-x-2">
+                              <Eye className="h-4 w-4 text-green-500" />
+                              <span>Local Models</span>
+                            </h3>
+                          </div>
+                          <div className="space-y-1">
+                            {availableModels.filter(model => !model.id.startsWith('gpt-')).map((model) => {
+                              const Icon = model.icon
+                              const isSelected = selectedModel === model.id
+                              return (
+                                <button
+                                  key={model.id}
+                                  onClick={() => {
+                                    setSelectedModel(model.id)
+                                    setShowModelSelector(false)
+                                    setModelSelectorView('main')
+                                  }}
+                                  className={`w-full flex items-start space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg sm:rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 group ${
+                                    isSelected ? 'bg-green-500/10 ring-1 ring-green-500/30 border border-green-500/20' : 'border border-transparent'
+                                  }`}
+                                >
+                                  <div className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg ${isSelected ? 'bg-green-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                    <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isSelected ? 'text-green-500' : 'text-[hsl(var(--text-secondary))]'}`} />
+                                  </div>
+                                  <div className="flex-1 text-left min-w-0">
+                                    <div className="flex items-center space-x-1 sm:space-x-2 mb-1">
+                                      <span className={`font-medium text-xs sm:text-sm truncate ${isSelected ? 'text-green-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                        {model.name}
+                                      </span>
+                                      <Badge className={`text-xs ${getSpeedColor(model.speed)} shrink-0`}>
+                                        {model.speed}
+                                      </Badge>
+                                      <span className="text-xs text-[hsl(var(--text-muted))] shrink-0 hidden sm:inline">{model.size}</span>
+                                    </div>
+                                    <p className="text-xs sm:text-sm text-[hsl(var(--text-secondary))] mb-1 sm:mb-2 line-clamp-2">{model.description}</p>
+                                    <div className="flex flex-wrap gap-1 overflow-hidden">
+                                      {model.capabilities.slice(0, 2).map((cap) => (
+                                        <span 
+                                          key={cap} 
+                                          className="text-xs text-[hsl(var(--text-muted))] bg-[hsl(var(--hover-bg))]/40 px-1.5 sm:px-2 py-0.5 rounded-md truncate"
+                                        >
+                                          {cap}
+                    </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                  )}
+                </div>
+              </div>
+                )}
+
+                {/* Tool Selector Dropdown */}
+                {showToolSelector && (
+                  <div className="absolute bottom-full right-0 mb-2 w-80 bg-[hsl(var(--primary-bg))]/95 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-[hsl(var(--border-color))]/50 overflow-hidden max-h-80 overflow-y-auto">
+                    <div className="p-3">
+                      <h3 className="text-sm font-semibold text-[hsl(var(--text-primary))] px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-3">
+                        Attach Tools
+                      </h3>
+                      
+                      {/* OpenAI Tools */}
+                      <div className="mb-4">
+                        <h4 className="text-xs font-medium text-[hsl(var(--text-secondary))] mb-2 px-2">OpenAI Functions</h4>
+                        <div className="space-y-1">
+                          {availableTools.filter(tool => tool.category === 'openai').map((tool) => {
+                            const Icon = tool.icon
+                            const isSelected = selectedTools.includes(tool.id)
+                            return (
+                              <button
+                                key={tool.id}
+                                onClick={() => toggleTool(tool.id)}
+                                className={`w-full flex items-start space-x-3 p-2 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 ${
+                                  isSelected ? 'bg-blue-500/10 ring-1 ring-blue-500/30 border border-blue-500/20' : 'border border-transparent'
+                                }`}
+                              >
+                                <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-blue-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                  <Icon className={`h-4 w-4 ${isSelected ? 'text-blue-500' : tool.color}`} />
+                </div>
+                                <div className="flex-1 text-left min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`font-medium text-sm ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                      {tool.name}
+                                    </span>
+                                    {isSelected && (
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              )}
+            </div>
+                                  <p className="text-xs text-[hsl(var(--text-secondary))] line-clamp-2">{tool.description}</p>
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Internal Agent Tools */}
+                      <div>
+                        <h4 className="text-xs font-medium text-[hsl(var(--text-secondary))] mb-2 px-2">Internal Agents</h4>
+                        <div className="space-y-1">
+                          {availableTools.filter(tool => tool.category === 'internal').map((tool) => {
+                            const Icon = tool.icon
+                            const isSelected = selectedTools.includes(tool.id)
+                            return (
+                              <button
+                                key={tool.id}
+                                onClick={() => toggleTool(tool.id)}
+                                className={`w-full flex items-start space-x-3 p-2 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 ${
+                                  isSelected ? 'bg-orange-500/10 ring-1 ring-orange-500/30 border border-orange-500/20' : 'border border-transparent'
+                                }`}
+                              >
+                                <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-orange-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
+                                  <Icon className={`h-4 w-4 ${isSelected ? 'text-orange-500' : tool.color}`} />
+                                </div>
+                                <div className="flex-1 text-left min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`font-medium text-sm ${isSelected ? 'text-orange-500' : 'text-[hsl(var(--text-primary))]'}`}>
+                                      {tool.name}
+                                    </span>
+                                    {isSelected && (
+                                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[hsl(var(--text-secondary))] line-clamp-2">{tool.description}</p>
+                                </div>
+                              </button>
+                            )
+                          })}
+              </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+                {/* Model Info Bar */}
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-[hsl(var(--border-color))]/20">
+                  <div className="flex items-center space-x-2">
+                    <ModelIcon className="h-4 w-4 text-[hsl(var(--text-secondary))]" />
+                    <span className="text-sm font-medium text-[hsl(var(--text-primary))]">
+                      {selectedModelInfo?.name}
+                    </span>
+                    <Badge className={`text-xs ${getSpeedColor(selectedModelInfo?.speed || 'medium')}`}>
+                      {selectedModelInfo?.speed}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        setShowToolSelector(!showToolSelector)
+                        setShowModelSelector(false)
+                      }}
+                      className={`p-2 rounded-lg transition-colors duration-200 ${
+                        selectedTools.length > 0 
+                          ? 'bg-blue-500/20 text-blue-500 hover:bg-blue-500/30' 
+                          : 'hover:bg-[hsl(var(--hover-bg))]/60 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))]'
+                      }`}
+                      title="Attach Tools"
+                    >
+                      <Wrench className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowModelSelector(!showModelSelector)
+                        setModelSelectorView('main')
+                        setShowToolSelector(false)
+                      }}
+                      className="p-2 hover:bg-[hsl(var(--hover-bg))]/60 rounded-lg transition-colors duration-200"
+                      title="Change AI Model"
+                    >
+                      <Settings className="h-4 w-4 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))]" />
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-          
-          {isLoading && (
-            <div className="group">
-              <div className="flex items-start space-x-2 sm:space-x-4">
-                <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-full flex items-center justify-center shadow-lg">
-                  <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="bg-[hsl(var(--primary-bg))]/60 border border-[hsl(var(--border-color))]/30 rounded-xl sm:rounded-2xl p-3 sm:p-4 backdrop-blur-sm shadow-sm">
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin text-[hsl(var(--text-muted))]" />
-                      <span className="text-xs sm:text-sm text-[hsl(var(--text-secondary))]">Thinking...</span>
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-1 bg-[hsl(var(--text-muted))] rounded-full animate-pulse"></div>
-                        <div className="w-1 h-1 bg-[hsl(var(--text-muted))] rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-1 h-1 bg-[hsl(var(--text-muted))] rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                      </div>
-                    </div>
-              </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
 
-      {/* Centered Input Area - Aligned with Messages */}
-      <div className="fixed bottom-3 sm:bottom-6 px-3 sm:px-6 left-0 lg:left-64 right-0 z-30">
-        <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto">
-          <div className="bg-[hsl(var(--primary-bg))]/80 backdrop-blur-xl border border-[hsl(var(--border-color))]/50 rounded-xl sm:rounded-2xl shadow-2xl p-3 sm:p-4 relative">
-          
-          {/* Model Selector Dropdown - Positioned as popup */}
-          {showModelSelector && (
-            <div className="absolute bottom-full right-0 mb-2 w-80 sm:w-96 bg-[hsl(var(--primary-bg))]/95 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-[hsl(var(--border-color))]/50 overflow-hidden max-h-80 overflow-y-auto">
-              <div className="p-2 sm:p-3">
-                {/* Main View - Cloud vs Local Selection */}
-                {modelSelectorView === 'main' && (
-                  <>
-                    <h3 className="text-xs sm:text-sm font-semibold text-[hsl(var(--text-primary))] px-2 sm:px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-3">
-                      Select AI Provider
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Cloud Option */}
-                      <button
-                        onClick={() => setModelSelectorView('cloud')}
-                        className="flex flex-col items-center space-y-3 p-4 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 border border-[hsl(var(--border-color))]/30 hover:border-blue-500/50 group"
-                      >
-                        <div className="p-3 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-all duration-200">
-                          <Cloud className="h-6 w-6 text-blue-500" />
-                        </div>
-                        <div className="text-center">
-                          <h4 className="text-sm font-medium text-[hsl(var(--text-primary))] mb-1">Cloud Use</h4>
-                          <p className="text-xs text-[hsl(var(--text-secondary))]">OpenAI Models</p>
-                        </div>
-                      </button>
-
-                      {/* Local Option */}
-                      <button
-                        onClick={() => setModelSelectorView('local')}
-                        className="flex flex-col items-center space-y-3 p-4 rounded-lg hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 border border-[hsl(var(--border-color))]/30 hover:border-green-500/50 group"
-                      >
-                        <div className="p-3 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 group-hover:from-green-500/30 group-hover:to-emerald-500/30 transition-all duration-200">
-                          <Eye className="h-6 w-6 text-green-500" />
-                        </div>
-                        <div className="text-center">
-                          <h4 className="text-sm font-medium text-[hsl(var(--text-primary))] mb-1">Local Use</h4>
-                          <p className="text-xs text-[hsl(var(--text-secondary))]">Ollama Models</p>
-                        </div>
-                      </button>
+                {/* Selected Tools Display */}
+                {selectedTools.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-sm font-medium text-[hsl(var(--text-primary))]">Attached Tools:</span>
                     </div>
-                  </>
-                )}
-
-                {/* Cloud Models View */}
-                {modelSelectorView === 'cloud' && (
-                  <>
-                    <div className="flex items-center space-x-2 px-2 sm:px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-2">
-                      <button
-                        onClick={() => setModelSelectorView('main')}
-                        className="p-1 hover:bg-[hsl(var(--hover-bg))]/60 rounded-md transition-colors duration-200"
-                      >
-                        <ArrowLeft className="h-4 w-4 text-[hsl(var(--text-muted))]" />
-                      </button>
-                      <h3 className="text-xs sm:text-sm font-semibold text-[hsl(var(--text-primary))] flex items-center space-x-2">
-                        <Cloud className="h-4 w-4 text-blue-500" />
-                        <span>Cloud Models</span>
-                      </h3>
-                    </div>
-                    <div className="space-y-1">
-                      {availableModels.filter(model => model.id.startsWith('gpt-')).map((model) => {
-                        const Icon = model.icon
-                        const isSelected = selectedModel === model.id
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTools.map(toolId => {
+                        const tool = availableTools.find(t => t.id === toolId)
+                        if (!tool) return null
+                        const Icon = tool.icon
                         return (
-                          <button
-                            key={model.id}
-                            onClick={() => {
-                              setSelectedModel(model.id)
-                              setShowModelSelector(false)
-                              setModelSelectorView('main')
-                            }}
-                            className={`w-full flex items-start space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg sm:rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 group ${
-                              isSelected ? 'bg-blue-500/10 ring-1 ring-blue-500/30 border border-blue-500/20' : 'border border-transparent'
-                            }`}
-                          >
-                            <div className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg ${isSelected ? 'bg-blue-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
-                              <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-secondary))]'}`} />
-                            </div>
-                            <div className="flex-1 text-left min-w-0">
-                              <div className="flex items-center space-x-1 sm:space-x-2 mb-1">
-                                <span className={`font-medium text-xs sm:text-sm truncate ${isSelected ? 'text-blue-500' : 'text-[hsl(var(--text-primary))]'}`}>
-                                  {model.name}
-                                </span>
-                                <Badge className={`text-xs ${getSpeedColor(model.speed)} shrink-0`}>
-                                  {model.speed}
-                                </Badge>
-                                <span className="text-xs text-blue-500 shrink-0 hidden sm:inline">{model.size}</span>
-                              </div>
-                              <p className="text-xs sm:text-sm text-[hsl(var(--text-secondary))] mb-1 sm:mb-2 line-clamp-2">{model.description}</p>
-                              <div className="flex flex-wrap gap-1 overflow-hidden">
-                                {model.capabilities.slice(0, 2).map((cap) => (
-                                  <span 
-                                    key={cap} 
-                                    className="text-xs text-[hsl(var(--text-muted))] bg-[hsl(var(--hover-bg))]/40 px-1.5 sm:px-2 py-0.5 rounded-md truncate"
-                                  >
-                                    {cap}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </button>
+                          <div key={toolId} className="flex items-center space-x-2 bg-[hsl(var(--hover-bg))]/60 rounded-lg px-2 py-1 border border-[hsl(var(--border-color))]/30">
+                            <Icon className={`h-3 w-3 ${tool.color}`} />
+                            <span className="text-xs text-[hsl(var(--text-primary))]">{tool.name}</span>
+                            <button
+                              onClick={() => toggleTool(toolId)}
+                              className="text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))] ml-1"
+                            >
+                              ×
+                            </button>
+                          </div>
                         )
                       })}
                     </div>
-                  </>
+                  </div>
                 )}
-
-                {/* Local Models View */}
-                {modelSelectorView === 'local' && (
-                  <>
-                    <div className="flex items-center space-x-2 px-2 sm:px-3 py-2 border-b border-[hsl(var(--border-color))]/30 mb-2">
-                      <button
-                        onClick={() => setModelSelectorView('main')}
-                        className="p-1 hover:bg-[hsl(var(--hover-bg))]/60 rounded-md transition-colors duration-200"
-                      >
-                        <ArrowLeft className="h-4 w-4 text-[hsl(var(--text-muted))]" />
-                      </button>
-                      <h3 className="text-xs sm:text-sm font-semibold text-[hsl(var(--text-primary))] flex items-center space-x-2">
-                        <Eye className="h-4 w-4 text-green-500" />
-                        <span>Local Models</span>
-                      </h3>
-                    </div>
-                    <div className="space-y-1">
-                      {availableModels.filter(model => !model.id.startsWith('gpt-')).map((model) => {
-                        const Icon = model.icon
-                        const isSelected = selectedModel === model.id
-                        return (
-                          <button
-                            key={model.id}
-                            onClick={() => {
-                              setSelectedModel(model.id)
-                              setShowModelSelector(false)
-                              setModelSelectorView('main')
-                            }}
-                            className={`w-full flex items-start space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-lg sm:rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 transition-all duration-200 group ${
-                              isSelected ? 'bg-green-500/10 ring-1 ring-green-500/30 border border-green-500/20' : 'border border-transparent'
-                            }`}
-                          >
-                            <div className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg ${isSelected ? 'bg-green-500/20' : 'bg-[hsl(var(--hover-bg))]/40'}`}>
-                              <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${isSelected ? 'text-green-500' : 'text-[hsl(var(--text-secondary))]'}`} />
-                            </div>
-                            <div className="flex-1 text-left min-w-0">
-                              <div className="flex items-center space-x-1 sm:space-x-2 mb-1">
-                                <span className={`font-medium text-xs sm:text-sm truncate ${isSelected ? 'text-green-500' : 'text-[hsl(var(--text-primary))]'}`}>
-                                  {model.name}
-                                </span>
-                                <Badge className={`text-xs ${getSpeedColor(model.speed)} shrink-0`}>
-                                  {model.speed}
-                                </Badge>
-                                <span className="text-xs text-[hsl(var(--text-muted))] shrink-0 hidden sm:inline">{model.size}</span>
-                              </div>
-                              <p className="text-xs sm:text-sm text-[hsl(var(--text-secondary))] mb-1 sm:mb-2 line-clamp-2">{model.description}</p>
-                              <div className="flex flex-wrap gap-1 overflow-hidden">
-                                {model.capabilities.slice(0, 2).map((cap) => (
-                                  <span 
-                                    key={cap} 
-                                    className="text-xs text-[hsl(var(--text-muted))] bg-[hsl(var(--hover-bg))]/40 px-1.5 sm:px-2 py-0.5 rounded-md truncate"
-                                  >
-                                    {cap}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Model Info Bar */}
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-[hsl(var(--border-color))]/20">
-            <div className="flex items-center space-x-2">
-              <ModelIcon className="h-4 w-4 text-[hsl(var(--text-secondary))]" />
-              <span className="text-sm font-medium text-[hsl(var(--text-primary))]">
-                {selectedModelInfo?.name}
-              </span>
-              <Badge className={`text-xs ${getSpeedColor(selectedModelInfo?.speed || 'medium')}`}>
-                {selectedModelInfo?.speed}
-              </Badge>
-            </div>
-            <button
-              onClick={() => {
-                setShowModelSelector(!showModelSelector)
-                setModelSelectorView('main')
-              }}
-              className="p-2 hover:bg-[hsl(var(--hover-bg))]/60 rounded-lg transition-colors duration-200"
-              title="Change AI Model"
-            >
-              <Settings className="h-4 w-4 text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-secondary))]" />
-            </button>
-          </div>
 
         {/* Input Area */}
-          <div className="flex items-end space-x-3">
-            <div className="flex-1 relative">
-              <textarea
+                <div className="flex items-end space-x-3">
+                  <div className="flex-1 relative">
+                    <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendMessage()
-                  }
-                }}
-                placeholder="Message AI..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          sendMessage()
+                        }
+                      }}
+                      placeholder="Message AI..."
               disabled={isLoading}
-                rows={1}
-                className="w-full resize-none border-0 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 pr-10 sm:pr-12 bg-[hsl(var(--secondary-bg))]/60 text-[hsl(var(--text-primary))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-[hsl(var(--secondary-bg))]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 backdrop-blur-sm text-sm sm:text-base"
-                style={{
-                  minHeight: '40px',
-                  maxHeight: '100px',
-                }}
-              />
-              <button
+                      className="w-full resize-none border-0 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 pr-14 sm:pr-16 bg-[hsl(var(--secondary-bg))]/60 text-[hsl(var(--text-primary))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-[hsl(var(--secondary-bg))]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 backdrop-blur-sm text-sm sm:text-base overflow-y-auto"
+                      style={{
+                        height: input.trim() ? '200px' : '100px',
+                        maxHeight: '200px',
+                      }}
+                    />
+                    <div className="absolute right-1.5 sm:right-2 bottom-1.5 sm:bottom-2">
+                      <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-                className="absolute right-1.5 sm:right-2 bottom-1.5 sm:bottom-2 p-2 sm:p-2.5 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-lg sm:rounded-xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-sm group"
+                        className="p-2 sm:p-2.5 border border-[hsl(var(--border-color))] text-[hsl(var(--text-primary))] rounded-lg sm:rounded-xl hover:bg-[hsl(var(--hover-bg))]/60 hover:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 group"
             >
               {isLoading ? (
-                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-              ) : (
-                  <Send className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200" />
-              )}
-              </button>
-            </div>
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
           </div>
-          
-          {/* Input Footer - Responsive */}
-          <div className="flex items-center justify-between mt-2 sm:mt-3 px-1">
-            <div className="flex items-center space-x-2 text-xs text-[hsl(var(--text-muted))]">
-              <span className="hidden sm:inline">Press Enter to send, Shift+Enter for new line</span>
-              <span className="sm:hidden">Enter to send</span>
-            </div>
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              <span className="text-xs text-[hsl(var(--text-secondary))] hidden sm:inline">AI Model Active</span>
-              <span className="text-xs text-[hsl(var(--text-secondary))] sm:hidden">AI Active</span>
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse"></div>
-            </div>
-            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 } 
